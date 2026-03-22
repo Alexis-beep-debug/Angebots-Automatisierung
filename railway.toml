@@ -1,0 +1,5 @@
+# Railway Cron Jobs (zusätzliche Services im Railway-Dashboard anlegen)
+# Service "cron-persons":  python cron_persons.py   Schedule: */15 * * * *
+# Service "cron-deals":    python cron_deals.py     Schedule: */15 * * * *
+#
+# Alternativ: beide Crons in einem einzigen Cron-Service zusammenführen.

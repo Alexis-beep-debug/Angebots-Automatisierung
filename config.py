@@ -1,0 +1,25 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+PIPEDRIVE_API_KEY = os.environ["PIPEDRIVE_API_KEY"]
+BREVO_API_KEY = os.environ["BREVO_API_KEY"]
+
+PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
+BREVO_BASE = "https://api.brevo.com/v3"
+
+# Deal-Status-Mapping Pipedrive → Brevo
+DEAL_STATUS_MAP = {
+    "open": "Offen",
+    "won": "Kunde",
+    "lost": "Verloren",
+    None: "Kein Interesse",
+}
+
+# Label-Mapping Pipedrive label_id → Klarname
+# Wird durch step1_preflight.py vervollständigt – hier bekannte Werte als Fallback
+LABEL_MAP: dict[int, str] = {
+    8: "Büro",
+    58: "Gesundheit/Medizin",
+}

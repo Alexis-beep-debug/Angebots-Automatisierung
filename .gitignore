@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+last_run_persons.txt
+last_run_deals.txt
+.venv/
+venv/
