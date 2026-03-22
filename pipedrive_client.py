@@ -118,18 +118,21 @@ async def add_note(person_id: int, content: str) -> dict:
         return r.json()["data"]
 
 
-async def add_activity(person_id: int, subject: str, note: str = "") -> dict:
+async def add_activity(person_id: int, subject: str, note: str = "", user_id: int | None = None) -> dict:
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        payload = {
+            "subject": subject,
+            "type": "task",
+            "person_id": person_id,
+            "done": 0,
+            "note": note,
+        }
+        if user_id:
+            payload["user_id"] = user_id
         r = await client.post(
             f"{PIPEDRIVE_BASE}/activities",
             params=_params(),
-            json={
-                "subject": subject,
-                "type": "email",
-                "person_id": person_id,
-                "done": 1,
-                "note": note,
-            },
+            json=payload,
         )
         r.raise_for_status()
         return r.json()["data"]
