@@ -113,7 +113,7 @@ async def link_clicked(request: Request) -> dict:
     activity_note = f"Geklickter Link: {link}\nEmail-Betreff: {subject}"
 
     await pd.add_note(person_id=person["id"], content=note_content)
-    await pd.add_activity(person_id=person["id"], subject=activity_subject, note=activity_note)
+    await pd.add_activity(person_id=person["id"], subject=activity_subject, note=activity_note, user_id=20546477)
 
     return {
         "status": "ok",
