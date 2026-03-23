@@ -1,5 +1,5 @@
 import httpx
-from datetime import datetime
+from datetime import datetime, timedelta
 from config import LEXOFFICE_BASE, LEXOFFICE_API_KEY
 
 _TIMEOUT = 30.0
@@ -52,6 +52,7 @@ async def create_quote(contact_id, line_items, title="Angebot"):
     ]
     payload = {
         "voucherDate": datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000+01:00"),
+        "expirationDate": (datetime.now() + timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S.000+01:00"),
         "address": {"contactId": contact_id},
         "lineItems": items,
         "totalPrice": {"currency": "EUR"},
