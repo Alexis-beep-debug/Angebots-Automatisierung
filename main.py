@@ -115,7 +115,7 @@ async def _process_angebot(body):
                 "{{NETTO_GESAMT}}": f"{netto_gesamt:.2f} €",
                 "{{ANGEBOT_LINK}}": lx_deeplink,
             }
-            gc.fill_presentation(presentation_id, replacements)
+            gc.fill_presentation_dynamic(presentation_id, data, replacements)
             slides_url = gc.get_presentation_url(presentation_id)
             log.info("Google Slides befüllt: %s", slides_url)
         except Exception as e:
