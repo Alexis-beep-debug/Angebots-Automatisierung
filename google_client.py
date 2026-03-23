@@ -11,7 +11,10 @@ def _slides(): return build("slides","v1",credentials=_creds())
 def create_folder(name):
     meta = {"name":name,"mimeType":"application/vnd.google-apps.folder"}
     if GOOGLE_DRIVE_PARENT_FOLDER_ID: meta["parents"] = [GOOGLE_DRIVE_PARENT_FOLDER_ID]
-    return _drive().files().create(body=meta,fields="id").execute()["id"]
+    drive = _drive()
+    folder_id = drive.files().create(body=meta,fields="id").execute()["id"]
+    drive.permissions().create(fileId=folder_id, body={"role":"reader","type":"anyone"}).execute()
+    return folder_id
 
 def copy_template(folder_id, name):
     return _drive().files().copy(fileId=GOOGLE_SLIDES_TEMPLATE_ID,body={"name":name,"parents":[folder_id]},fields="id").execute()["id"]
