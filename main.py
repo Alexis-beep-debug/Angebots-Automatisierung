@@ -98,28 +98,8 @@ async def _process_angebot(body):
             folder_id = gc.create_folder(folder_name)
             folder_url = f"https://drive.google.com/drive/folders/{folder_id}"
             log.info("Google Drive Ordner: %s", folder_id)
-
-            slides_name = f"Angebot {company or name} {datetime.now().strftime('%d.%m.%Y')}"
-            presentation_id = gc.copy_template(folder_id=folder_id, name=slides_name)
-            positionen_text = "\n".join(
-                f"• {i['name']}: {i['quantity']} {i['unit']} × {i['price']:.2f} € = {i['total']:.2f} €"
-                for i in line_items
-            )
-            replacements = {
-                "{{KUNDENNAME}}":   name,
-                "{{FIRMA}}":        company,
-                "{{EMAIL}}":        email,
-                "{{TELEFON}}":      phone,
-                "{{DATUM}}":        datetime.now().strftime("%d.%m.%Y"),
-                "{{POSITIONEN}}":   positionen_text,
-                "{{NETTO_GESAMT}}": f"{netto_gesamt:.2f} €",
-                "{{ANGEBOT_LINK}}": lx_deeplink,
-            }
-            gc.fill_presentation(presentation_id, replacements)
-            slides_url = gc.get_presentation_url(presentation_id)
-            log.info("Google Slides befüllt: %s", slides_url)
         except Exception as e:
-            log.warning("Google Drive/Slides fehlgeschlagen: %s", e)
+            log.warning("Google Drive Ordner fehlgeschlagen: %s", e)
 
         summary = calc.build_summary(data, line_items)
         note_lines = ["📋 Angebot automatisch erstellt", "", f"🏢 {company} | {street}, {plz} {city}", "", summary]
