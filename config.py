@@ -16,3 +16,5 @@ if _sa_json:
 else:
     _sa_file = os.path.join(os.path.dirname(__file__), "service_account.json")
     SERVICE_ACCOUNT_INFO = json.load(open(_sa_file)) if os.path.exists(_sa_file) else {}
+
+OWNER_EMAIL = os.getenv("OWNER_EMAIL", "")
