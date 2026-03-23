@@ -61,6 +61,8 @@ async def create_quote(contact_id, line_items, title="Angebot"):
     }
     async with httpx.AsyncClient(timeout=_TIMEOUT) as c:
         r = await c.post(f"{LEXOFFICE_BASE}/quotations", headers=_headers(), json=payload)
+        if not r.is_success:
+            import logging; logging.getLogger(__name__).error("Lexoffice Response: %s", r.text)
         r.raise_for_status()
         quote_id = r.json()["id"]
         return {"id": quote_id, "deeplink": f"https://app.lexoffice.de/vouchers#!/VoucherView/Offer/{quote_id}"}
