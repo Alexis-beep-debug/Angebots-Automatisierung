@@ -34,6 +34,7 @@ async def find_or_create_contact(name, email, phone="", company=""):
         return r.json()["id"]
 
 async def create_quote(contact_id, line_items, title="Angebot"):
+    title = title[:25]
     items = [
         {
             "type": "custom",
