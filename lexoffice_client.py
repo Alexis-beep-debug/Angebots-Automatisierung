@@ -19,12 +19,12 @@ async def find_or_create_contact(name, email, phone="", company=""):
             "version": 0,
             "roles": {"customer": {}},
             "person": {
-                "salutation": "",
                 "firstName": parts[0],
                 "lastName": parts[1] if len(parts) > 1 else ""
             },
-            "emailAddresses": {"business": [email]}
         }
+        if email:
+            payload["emailAddresses"] = {"business": [email]}
         if phone:
             payload["phoneNumbers"] = {"business": [phone]}
         if company:
