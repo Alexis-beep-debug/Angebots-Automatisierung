@@ -138,9 +138,11 @@ def fill_presentation_dynamic(presentation_id, data, replacements):
     prob_raw = ""
     for k, v in data.items():
         if "glichkeit_2_2" in k:
-            prob_raw = v
+            prob_raw = v.get("value", "") if isinstance(v, dict) else str(v)
             break
     loes_raw = data.get("field_cCLhd", "")
+    if isinstance(loes_raw, dict):
+        loes_raw = loes_raw.get("value", "")
 
     problems = [p.strip() for p in prob_raw.split(",") if p.strip()]
     loesungen = [l.strip() for l in loes_raw.split(",") if l.strip()]
