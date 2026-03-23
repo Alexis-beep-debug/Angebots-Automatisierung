@@ -87,7 +87,7 @@ def _match_map(text, mapping):
 
 
 def find_problem_slide(presentation_id, marker="{{Problem_Titel}}"):
-    service = _get_slides_service()
+    service = _slides()
     prs = service.presentations().get(presentationId=presentation_id).execute()
     for slide in prs.get("slides", []):
         for el in slide.get("pageElements", []):
@@ -98,7 +98,7 @@ def find_problem_slide(presentation_id, marker="{{Problem_Titel}}"):
 
 
 def duplicate_slide(presentation_id, slide_id):
-    service = _get_slides_service()
+    service = _slides()
     resp = service.presentations().batchUpdate(
         presentationId=presentation_id,
         body={"requests": [{"duplicateObject": {"objectId": slide_id}}]}
@@ -107,7 +107,7 @@ def duplicate_slide(presentation_id, slide_id):
 
 
 def fill_slide_placeholders(presentation_id, slide_id, mapping):
-    service = _get_slides_service()
+    service = _slides()
     requests = [
         {"replaceAllText": {
             "containsText": {"text": k, "matchCase": True},
@@ -124,7 +124,7 @@ def fill_slide_placeholders(presentation_id, slide_id, mapping):
 
 
 def delete_slide(presentation_id, slide_id):
-    service = _get_slides_service()
+    service = _slides()
     service.presentations().batchUpdate(
         presentationId=presentation_id,
         body={"requests": [{"deleteObject": {"objectId": slide_id}}]}
