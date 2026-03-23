@@ -168,9 +168,9 @@ def fill_presentation_dynamic(presentation_id, data, replacements):
         l_t, l_b = _match_map(loes, LOESUNG_MAP)
         fill_slide_placeholders(presentation_id, nid, {
             "{{Problem_Titel}}": p_t,
-            "{{Problem_Beschreibung}}": p_b,
-            "{{Loesung_Titel}}": l_t,
-            "{{Loesung_Beschreibung}}": l_b,
+            "{{Problem_Herausforderung}}": p_b,
+            
+            "{{Problem_Ansatz}}": l_b,
         })
         log.info("Slide %d: %s / %s", i + 1, p_t, l_t)
 
