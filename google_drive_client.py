@@ -1,4 +1,9 @@
-"""Google Drive client – create folders and upload PDFs."""
+"""Google Drive client – create folders and upload PDFs.
+
+Uses OAuth2 credentials (refresh token) so files are owned by the user,
+not the service account (avoids storage quota errors).
+Falls back to Service Account if OAuth env vars are not set.
+"""
 from __future__ import annotations
 
 import io
@@ -6,6 +11,7 @@ import json
 import logging
 import os
 
+from google.oauth2.credentials import Credentials as OAuthCredentials
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
@@ -15,7 +21,23 @@ logger = logging.getLogger(__name__)
 _SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 
-def _get_credentials() -> service_account.Credentials:
+def _get_credentials():
+    """Get OAuth credentials (preferred) or fall back to Service Account."""
+    client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+    client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
+    refresh_token = os.environ.get("GOOGLE_OAUTH_REFRESH_TOKEN", "")
+
+    if client_id and client_secret and refresh_token:
+        return OAuthCredentials(
+            token=None,
+            refresh_token=refresh_token,
+            client_id=client_id,
+            client_secret=client_secret,
+            token_uri="https://oauth2.googleapis.com/token",
+            scopes=_SCOPES,
+        )
+
+    # Fallback: Service Account
     raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "{}")
     info = json.loads(raw)
     return service_account.Credentials.from_service_account_info(info, scopes=_SCOPES)
@@ -35,7 +57,7 @@ def create_folder(name: str, parent_id: str | None = None) -> str:
     if parent:
         metadata["parents"] = [parent]
 
-    folder = _drive().files().create(body=metadata, fields="id").execute()
+    folder = _drive().files().create(body=metadata, fields="id", supportsAllDrives=True).execute()
     folder_id = folder["id"]
     logger.info("Created Drive folder '%s' → %s", name, folder_id)
     return folder_id
@@ -52,6 +74,7 @@ def upload_pdf(file_bytes: bytes, filename: str, folder_id: str) -> str:
         body={"name": filename, "parents": [folder_id]},
         media_body=media,
         fields="id",
+        supportsAllDrives=True,
     ).execute()
     file_id = uploaded["id"]
     logger.info("Uploaded '%s' → %s", filename, file_id)
