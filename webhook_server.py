@@ -162,6 +162,10 @@ async def generate_proposal(request: Request) -> dict:
     print(json.dumps(payload, indent=2, default=str, ensure_ascii=False), flush=True)
     print("=== END PAYLOAD ===", flush=True)
 
+    # Superforms wraps fields in {"files": [], "data": {...fields...}}
+    if "data" in payload and isinstance(payload["data"], dict):
+        payload = payload["data"]
+
     # Superforms sends nested objects: {"field": {"value": "...", "name": "...", ...}}
     # Flatten to simple key-value: {"field": "value"}
     flat_payload: dict[str, Any] = {}
