@@ -20,51 +20,49 @@ _TEMPLATE_DIR = Path(__file__).parent / "templates"
 _OUTPUT_DIR = Path(__file__).parent / "output"
 _OUTPUT_DIR.mkdir(exist_ok=True)
 
-# ── Problem → Kategorie + Lösung Mapping ──
-# Maps the Superforms checkbox labels to grouped categories with GC solutions
+# ── Problem → Individuelle Herausforderung + G+C-Ansatz ──
+# Jedes Problem bekommt einen eigenen, individuellen Text
 PROBLEM_SOLUTION_MAP = {
     "Ineffektive und Inkonsistente Reinigungsqualität": {
-        "kategorie": "QUALITÄT & ZUVERLÄSSIGKEIT",
-        "herausforderung": "Ineffektive und inkonsistente Reinigungsqualität sowie mangelnde Zuverlässigkeit in der Ausführung.",
-        "loesung": 'Als Fach- und Meisterbetrieb erhalten Sie "Alles aus einer Hand". Wir setzen auf geschultes Personal und feste Revierpläne für konstante Ergebnisse.',
+        "kategorie": "REINIGUNGSQUALITÄT",
+        "herausforderung": "Schwankende Ergebnisse, unterschiedliche Standards je nach Einsatztag und Reinigungskraft – das kostet Vertrauen und Nerven.",
+        "loesung": "Feste Revierpläne, geschultes Fachpersonal und standardisierte Checklisten garantieren gleichbleibend hohe Qualität bei jedem Einsatz.",
     },
     "Mangelnde Zuverlässigkeit (Reliabilität)": {
-        "kategorie": "QUALITÄT & ZUVERLÄSSIGKEIT",
-        "herausforderung": "Ineffektive und inkonsistente Reinigungsqualität sowie mangelnde Zuverlässigkeit in der Ausführung.",
-        "loesung": 'Als Fach- und Meisterbetrieb erhalten Sie "Alles aus einer Hand". Wir setzen auf geschultes Personal und feste Revierpläne für konstante Ergebnisse.',
+        "kategorie": "ZUVERLÄSSIGKEIT",
+        "herausforderung": "Reinigungskräfte erscheinen nicht, Aufgaben werden vergessen oder nur teilweise erledigt – Sie müssen ständig hinterher sein.",
+        "loesung": "Als Meisterbetrieb mit festen Teams und klaren Einsatzplänen garantieren wir Zuverlässigkeit. Digitale Zeiterfassung dokumentiert jeden Einsatz lückenlos.",
     },
     "fehlende Kontrolle": {
-        "kategorie": "TRANSPARENZ & KONTROLLE",
-        "herausforderung": "Fehlende Kontrolle, Intransparenz bei Leistung und Kosten sowie Zeitverlust durch eigenes Nachsteuern.",
-        "loesung": "Digitale Nachweis- und Kontrollsysteme schaffen volle Transparenz. Sie haben jederzeit Einblick, ohne selbst Zeit für ständige Kontrollen aufwenden zu müssen.",
+        "kategorie": "KONTROLLE",
+        "herausforderung": "Sie haben keinen Überblick, ob und wann gereinigt wurde. Mängel fallen erst auf, wenn es zu spät ist.",
+        "loesung": "Unser digitales Kontrollsystem mit Echtzeit-Reporting gibt Ihnen jederzeit Einblick – ohne selbst vor Ort kontrollieren zu müssen.",
     },
     "Intransparenz bei Leistung, Kosten und Prozessen": {
-        "kategorie": "TRANSPARENZ & KONTROLLE",
-        "herausforderung": "Fehlende Kontrolle, Intransparenz bei Leistung und Kosten sowie Zeitverlust durch eigenes Nachsteuern.",
-        "loesung": "Digitale Nachweis- und Kontrollsysteme schaffen volle Transparenz. Sie haben jederzeit Einblick, ohne selbst Zeit für ständige Kontrollen aufwenden zu müssen.",
+        "kategorie": "TRANSPARENZ",
+        "herausforderung": "Unklare Leistungsbeschreibungen, versteckte Kosten und intransparente Abrechnungen machen eine Bewertung des Preis-Leistungs-Verhältnisses unmöglich.",
+        "loesung": "Detaillierte Leistungsverzeichnisse, offene Einzelpreis-Kalkulation und monatliche Leistungsberichte schaffen volle Kostentransparenz.",
     },
     "Schlechte Urlaubs/ und Krankheitsvertretung": {
-        "kategorie": "SERVICE & NACHHALTIGKEIT",
-        "herausforderung": "Schlechte Urlaubs- und Krankheitsvertretung, mangelhaftes Beschwerdemanagement.",
-        "loesung": "Wir garantieren Proaktivität in Beratung und Ausführung. Zudem sichern wir Nachhaltigkeit und Compliance, inklusive verlässlicher Vertretungsregelungen.",
+        "kategorie": "VERTRETUNGSREGELUNG",
+        "herausforderung": "Bei Urlaub oder Krankheit fällt die Reinigung aus oder wird von uneingearbeiteten Kräften übernommen – das Ergebnis leidet.",
+        "loesung": "Feste Vertretungsteams, die Ihr Objekt kennen, springen nahtlos ein. So bleibt die Qualität auch bei Personalwechsel konstant.",
     },
     "Schlechtes Beschwerdemanagement": {
-        "kategorie": "SERVICE & NACHHALTIGKEIT",
-        "herausforderung": "Schlechte Urlaubs- und Krankheitsvertretung, mangelhaftes Beschwerdemanagement.",
-        "loesung": "Wir garantieren Proaktivität in Beratung und Ausführung. Zudem sichern wir Nachhaltigkeit und Compliance, inklusive verlässlicher Vertretungsregelungen.",
+        "kategorie": "BESCHWERDEMANAGEMENT",
+        "herausforderung": "Reklamationen versanden, Rückmeldungen bleiben ohne Konsequenz – Sie fühlen sich als Kunde nicht ernst genommen.",
+        "loesung": "Persönlicher Objektleiter als fester Ansprechpartner, 24h-Reaktionszeit bei Beschwerden und dokumentierte Nachbesserung mit Rückmeldung an Sie.",
     },
 }
 
 
 def _build_probleme_loesungen(selected_problems: list[str]) -> list[dict]:
-    """Group selected problems into unique categories with solutions."""
-    seen_categories: set[str] = set()
+    """Return individual problem/solution entry for each selected problem."""
     result: list[dict] = []
 
     for problem in selected_problems:
         mapping = PROBLEM_SOLUTION_MAP.get(problem)
-        if mapping and mapping["kategorie"] not in seen_categories:
-            seen_categories.add(mapping["kategorie"])
+        if mapping:
             result.append(mapping)
 
     # If no problems selected, provide a default entry

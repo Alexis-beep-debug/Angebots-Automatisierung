@@ -68,23 +68,23 @@
 
   /* ── Page Content ── */
   .page-content {
-    padding: 30px 40px 20px 40px;
+    padding: 24px 40px 16px 40px;
   }
 
   /* ── Section Title with red accent ── */
   .section-title {
     font-family: 'Roboto Slab', serif;
-    font-size: 20pt;
+    font-size: 18pt;
     font-weight: 700;
     color: var(--primary);
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     padding-left: 16px;
     border-left: 4px solid var(--accent);
   }
   .section-subtitle {
     color: var(--text-light);
-    font-size: 10pt;
-    margin-bottom: 24px;
+    font-size: 9pt;
+    margin-bottom: 14px;
   }
 
   /* ── Footer ── */
@@ -170,16 +170,18 @@
   /* ── Problem/Solution cards ── */
   .problem-card {
     border: 1px solid #dce3e8;
-    border-radius: 6px;
-    padding: 18px;
-    margin-bottom: 14px;
+    border-radius: 5px;
+    padding: 8px 14px;
+    margin-bottom: 5px;
     border-left: 4px solid var(--accent);
   }
   .problem-card h3 {
     color: var(--primary);
-    font-size: 11pt;
+    font-size: 9pt;
     font-weight: 700;
-    margin-bottom: 10px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
   .problem-columns {
     display: table;
@@ -190,20 +192,20 @@
     display: table-cell;
     width: 50%;
     vertical-align: top;
-    padding-right: 16px;
+    padding-right: 12px;
   }
-  .problem-col:last-child { padding-right: 0; padding-left: 16px; }
+  .problem-col:last-child { padding-right: 0; padding-left: 12px; }
   .problem-label {
-    font-size: 7.5pt;
+    font-size: 6.5pt;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
   .problem-label.challenge { color: var(--accent); }
   .problem-label.solution { color: var(--green); }
-  .problem-text { font-size: 9pt; color: var(--text); font-style: italic; }
-  .solution-text { font-size: 9pt; color: var(--text); }
+  .problem-text { font-size: 8pt; color: var(--text); font-style: italic; line-height: 1.35; }
+  .solution-text { font-size: 8pt; color: var(--text); line-height: 1.35; }
 
   /* ── Info Card (Daten & Fakten) ── */
   .info-card {
@@ -491,18 +493,18 @@
   </div>
   <div class="page-content">
     <div class="section-title">OPTIMIERUNGSPOTENZIAL</div>
-    <div class="section-subtitle">Aus der Bestandsaufnahme haben wir folgende Kernprobleme identifiziert und stellen Ihnen unseren konkreten Lösungsansatz gegenüber.</div>
+    <div class="section-subtitle">Aus der Bestandsaufnahme haben wir folgende Herausforderungen identifiziert – und zeigen Ihnen unseren konkreten Lösungsansatz.</div>
 
     {% for item in probleme_loesungen %}
     <div class="problem-card">
       <h3>{{ item.kategorie }}</h3>
       <div class="problem-columns">
         <div class="problem-col">
-          <div class="problem-label challenge">Herausforderung:</div>
+          <div class="problem-label challenge">Herausforderung</div>
           <div class="problem-text">{{ item.herausforderung }}</div>
         </div>
         <div class="problem-col">
-          <div class="problem-label solution">Der G+C-Ansatz:</div>
+          <div class="problem-label solution">Der G+C-Ansatz</div>
           <div class="solution-text">{{ item.loesung }}</div>
         </div>
       </div>

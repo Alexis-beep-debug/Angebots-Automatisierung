@@ -21,8 +21,11 @@ test_data = {
     # Probleme (Checkboxen)
     "Möglichkeit_2_2": [
         "Ineffektive und Inkonsistente Reinigungsqualität",
+        "Mangelnde Zuverlässigkeit (Reliabilität)",
         "fehlende Kontrolle",
+        "Intransparenz bei Leistung, Kosten und Prozessen",
         "Schlechte Urlaubs/ und Krankheitsvertretung",
+        "Schlechtes Beschwerdemanagement",
     ],
     # Wünsche
     "field_cCLhd": [
