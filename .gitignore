@@ -7,3 +7,4 @@ last_run_deals.txt
 .venv/
 venv/
 output/
+*.pdf
