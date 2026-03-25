@@ -251,7 +251,7 @@ async def generate_proposal(request: Request) -> dict:
         if contact_id:
             quote = await lx.create_quote(
                 contact_id=contact_id,
-                title=f"Unterhaltsreinigung – {company}",
+                title="Unterhaltsreinigung",
                 introduction=f"Angebot für die Unterhaltsreinigung am Standort {template_data['objekt_adresse']}.",
             )
             quote_id = quote.get("id", "")
