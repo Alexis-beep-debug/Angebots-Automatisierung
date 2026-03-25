@@ -175,3 +175,37 @@ async def create_quote(
         )
         r.raise_for_status()
         return r.json()
+
+
+async def render_document(document_id: str, doc_type: str = "quotations") -> None:
+    """Trigger PDF rendering for a Lexoffice document (required before download)."""
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        r = await client.get(
+            f"{_BASE}/{doc_type}/{document_id}/document",
+            headers=_headers(),
+        )
+        r.raise_for_status()
+
+
+async def download_pdf(document_id: str) -> bytes:
+    """Download a rendered Lexoffice document as PDF bytes."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
+        # First render the document
+        render_r = await client.get(
+            f"{_BASE}/quotations/{document_id}/document",
+            headers=_headers(),
+        )
+        render_r.raise_for_status()
+        render_data = render_r.json()
+        document_file_id = render_data.get("documentFileId", "")
+
+        if not document_file_id:
+            raise ValueError("No documentFileId returned from Lexoffice")
+
+        # Download the PDF
+        pdf_r = await client.get(
+            f"{_BASE}/files/{document_file_id}",
+            headers=_headers(),
+        )
+        pdf_r.raise_for_status()
+        return pdf_r.content

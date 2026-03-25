@@ -228,7 +228,8 @@ async def generate_proposal(request: Request) -> dict:
     deal_id = deal["id"]
     results["deal_id"] = deal_id
 
-    # --- 4. Lexoffice: Kontakt anlegen (mit Billing-Adresse!) ---
+    # --- 4. Lexoffice: Kontakt + Angebot anlegen ---
+    lexoffice_pdf_bytes = None
     try:
         lx_contact = await lx.get_or_create_contact(
             company_name=company,
@@ -240,10 +241,35 @@ async def generate_proposal(request: Request) -> dict:
             zip_code=zip_code,
             city=city,
         )
-        results["lexoffice_contact_id"] = lx_contact.get("id") or lx_contact.get("resourceUri", "")
-        logger.info("Lexoffice contact: %s", results["lexoffice_contact_id"])
+        contact_id = lx_contact.get("id") or ""
+        if not contact_id and lx_contact.get("resourceUri"):
+            contact_id = lx_contact["resourceUri"].rstrip("/").split("/")[-1]
+        results["lexoffice_contact_id"] = contact_id
+        print(f"Lexoffice contact: {contact_id}", flush=True)
+
+        # Lexoffice Angebot erstellen
+        if contact_id:
+            quote = await lx.create_quote(
+                contact_id=contact_id,
+                title=f"Unterhaltsreinigung – {company}",
+                introduction=f"Angebot für die Unterhaltsreinigung am Standort {template_data['objekt_adresse']}.",
+            )
+            quote_id = quote.get("id", "")
+            results["lexoffice_quote_id"] = quote_id
+            print(f"Lexoffice quote created: {quote_id}", flush=True)
+
+            # PDF herunterladen
+            if quote_id:
+                import asyncio
+                await asyncio.sleep(2)  # Lexoffice braucht kurz zum Rendern
+                try:
+                    lexoffice_pdf_bytes = await lx.download_pdf(quote_id)
+                    print(f"Lexoffice PDF downloaded: {len(lexoffice_pdf_bytes)} bytes", flush=True)
+                except Exception as pdf_exc:
+                    print(f"Lexoffice PDF download failed: {pdf_exc}", flush=True)
+
     except Exception as exc:
-        logger.error("Lexoffice contact creation failed: %s", exc)
+        print(f"Lexoffice failed: {exc}", flush=True)
         results["lexoffice_error"] = str(exc)
 
     # --- 5. Google Drive: Ordner erstellen + PDFs hochladen ---
@@ -255,7 +281,7 @@ async def generate_proposal(request: Request) -> dict:
         results["drive_folder"] = drive_link
         print(f"Drive folder created: {drive_link}", flush=True)
 
-        # Upload Angebots-PDF
+        # Upload Angebots-PDF (unsere generierte Version)
         if results.get("pdf_path"):
             from pathlib import Path
             pdf_file = Path(results["pdf_path"])
@@ -263,6 +289,12 @@ async def generate_proposal(request: Request) -> dict:
                 pdf_bytes = pdf_file.read_bytes()
                 gdrive.upload_pdf(pdf_bytes, pdf_file.name, folder_id)
                 print(f"Uploaded Angebots-PDF to Drive", flush=True)
+
+        # Upload Lexoffice-PDF
+        if lexoffice_pdf_bytes:
+            lx_filename = f"Lexoffice_Angebot_{company.replace(' ', '_')}.pdf"
+            gdrive.upload_pdf(lexoffice_pdf_bytes, lx_filename, folder_id)
+            print(f"Uploaded Lexoffice-PDF to Drive", flush=True)
 
     except Exception as exc:
         print(f"Google Drive failed: {exc}", flush=True)
