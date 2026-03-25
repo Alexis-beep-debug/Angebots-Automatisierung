@@ -68,23 +68,23 @@
 
   /* ── Page Content ── */
   .page-content {
-    padding: 30px 40px 20px 40px;
+    padding: 24px 40px 16px 40px;
   }
 
   /* ── Section Title with red accent ── */
   .section-title {
     font-family: 'Roboto Slab', serif;
-    font-size: 20pt;
+    font-size: 18pt;
     font-weight: 700;
     color: var(--primary);
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     padding-left: 16px;
     border-left: 4px solid var(--accent);
   }
   .section-subtitle {
     color: var(--text-light);
-    font-size: 10pt;
-    margin-bottom: 24px;
+    font-size: 9pt;
+    margin-bottom: 14px;
   }
 
   /* ── Footer ── */
@@ -167,43 +167,81 @@
     color: var(--accent);
   }
 
-  /* ── Problem/Solution cards ── */
-  .problem-card {
-    border: 1px solid #dce3e8;
-    border-radius: 6px;
-    padding: 18px;
-    margin-bottom: 14px;
-    border-left: 4px solid var(--accent);
-  }
-  .problem-card h3 {
-    color: var(--primary);
-    font-size: 11pt;
-    font-weight: 700;
-    margin-bottom: 10px;
-  }
-  .problem-columns {
+  /* ── Optimierungspotenzial – 3-Karten-Grid ── */
+  .opt-grid {
     display: table;
     width: 100%;
     table-layout: fixed;
+    border-spacing: 14px 0;
+    margin-left: -14px;
   }
-  .problem-col {
+  .opt-card {
     display: table-cell;
-    width: 50%;
     vertical-align: top;
-    padding-right: 16px;
+    border: 1px solid #dce3e8;
+    border-radius: 6px;
+    overflow: hidden;
   }
-  .problem-col:last-child { padding-right: 0; padding-left: 16px; }
-  .problem-label {
-    font-size: 7.5pt;
+  .opt-card-header {
+    padding: 10px 16px;
+    font-weight: 700;
+    font-size: 8.5pt;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 600;
-    margin-bottom: 4px;
+    letter-spacing: 0.8px;
+    color: #fff;
   }
-  .problem-label.challenge { color: var(--accent); }
-  .problem-label.solution { color: var(--green); }
-  .problem-text { font-size: 9pt; color: var(--text); font-style: italic; }
-  .solution-text { font-size: 9pt; color: var(--text); }
+  .probleme-header { background: var(--accent); }
+  .wuensche-header { background: var(--green); }
+  .gc-header { background: var(--primary); }
+  .opt-card-body {
+    padding: 16px;
+  }
+
+  /* Items in Probleme & Wünsche */
+  .opt-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f0f2f4;
+    font-size: 8.5pt;
+    line-height: 1.4;
+  }
+  .opt-item:last-child { border-bottom: none; }
+  .opt-bullet {
+    font-weight: 700;
+    font-size: 10pt;
+    flex-shrink: 0;
+    line-height: 1.2;
+  }
+  .probleme-bullet { color: var(--accent); }
+  .wuensche-bullet { color: var(--green); }
+  .opt-item-empty {
+    font-size: 8.5pt;
+    color: var(--text-light);
+    font-style: italic;
+  }
+
+  /* G+C-Ansatz Karte */
+  .gc-card { border-bottom: 3px solid var(--primary); }
+  .gc-point {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 8pt;
+    line-height: 1.4;
+  }
+  .gc-point strong {
+    color: var(--primary);
+    font-size: 8.5pt;
+  }
+  .gc-icon {
+    color: var(--primary);
+    font-size: 8pt;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
 
   /* ── Info Card (Daten & Fakten) ── */
   .info-card {
@@ -491,23 +529,64 @@
   </div>
   <div class="page-content">
     <div class="section-title">OPTIMIERUNGSPOTENZIAL</div>
-    <div class="section-subtitle">Aus der Bestandsaufnahme haben wir folgende Kernprobleme identifiziert und stellen Ihnen unseren konkreten Lösungsansatz gegenüber.</div>
+    <div class="section-subtitle">Aus der Bestandsaufnahme haben wir folgende Herausforderungen identifiziert – und zeigen Ihnen unseren konkreten Lösungsansatz.</div>
 
-    {% for item in probleme_loesungen %}
-    <div class="problem-card">
-      <h3>{{ item.kategorie }}</h3>
-      <div class="problem-columns">
-        <div class="problem-col">
-          <div class="problem-label challenge">Herausforderung:</div>
-          <div class="problem-text">{{ item.herausforderung }}</div>
+    <div class="opt-grid">
+      {# Karte 1: Probleme (nur angekreuzte) #}
+      <div class="opt-card">
+        <div class="opt-card-header probleme-header">AKTUELLE HERAUSFORDERUNGEN</div>
+        <div class="opt-card-body">
+          {% for p in selected_problems %}
+          <div class="opt-item probleme-item">
+            <span class="opt-bullet probleme-bullet">✗</span>
+            <span>{{ p }}</span>
+          </div>
+          {% endfor %}
+          {% if not selected_problems %}
+          <div class="opt-item-empty">Keine spezifischen Probleme angegeben.</div>
+          {% endif %}
         </div>
-        <div class="problem-col">
-          <div class="problem-label solution">Der G+C-Ansatz:</div>
-          <div class="solution-text">{{ item.loesung }}</div>
+      </div>
+
+      {# Karte 2: Wünsche & Ziele (nur angekreuzte) #}
+      <div class="opt-card">
+        <div class="opt-card-header wuensche-header">WÜNSCHE &amp; ZIELE</div>
+        <div class="opt-card-body">
+          {% for w in selected_wishes %}
+          <div class="opt-item wuensche-item">
+            <span class="opt-bullet wuensche-bullet">✓</span>
+            <span>{{ w }}</span>
+          </div>
+          {% endfor %}
+          {% if not selected_wishes %}
+          <div class="opt-item-empty">Keine spezifischen Wünsche angegeben.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      {# Karte 3: G+C-Ansatz (Standard) #}
+      <div class="opt-card gc-card">
+        <div class="opt-card-header gc-header">DER G+C-ANSATZ</div>
+        <div class="opt-card-body">
+          <div class="gc-point">
+            <span class="gc-icon">◆</span>
+            <div><strong>Meisterbetrieb-Qualität</strong><br>Geschultes Fachpersonal, feste Revierpläne und standardisierte Prozesse für gleichbleibend hohe Ergebnisse.</div>
+          </div>
+          <div class="gc-point">
+            <span class="gc-icon">◆</span>
+            <div><strong>Volle Transparenz</strong><br>Digitale Nachweis- und Kontrollsysteme, offene Kalkulation und regelmäßige Leistungsberichte.</div>
+          </div>
+          <div class="gc-point">
+            <span class="gc-icon">◆</span>
+            <div><strong>Persönlicher Service</strong><br>Fester Objektleiter als Ansprechpartner, zuverlässige Vertretungsregelungen und proaktive Beratung.</div>
+          </div>
+          <div class="gc-point">
+            <span class="gc-icon">◆</span>
+            <div><strong>Alles aus einer Hand</strong><br>Ein Partner für alle Facility-Leistungen – nachhaltig, compliant und mit kurzen Reaktionszeiten.</div>
+          </div>
         </div>
       </div>
     </div>
-    {% endfor %}
   </div>
   <div class="page-footer">Seite 2/{{ total_pages }} — Lösungen &amp; Ziele</div>
 </div>

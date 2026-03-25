@@ -24,7 +24,7 @@ test_data = {
         "fehlende Kontrolle",
         "Schlechte Urlaubs/ und Krankheitsvertretung",
     ],
-    # Wünsche
+    # Wünsche & Ziele
     "field_cCLhd": [
         "Fachbetrieb / Meisterbetrieb",
         "Digitale Nachweis- und Kontrollsysteme",

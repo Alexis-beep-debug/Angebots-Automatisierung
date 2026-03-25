@@ -20,62 +20,54 @@ _TEMPLATE_DIR = Path(__file__).parent / "templates"
 _OUTPUT_DIR = Path(__file__).parent / "output"
 _OUTPUT_DIR.mkdir(exist_ok=True)
 
-# ── Problem → Kategorie + Lösung Mapping ──
-# Maps the Superforms checkbox labels to grouped categories with GC solutions
-PROBLEM_SOLUTION_MAP = {
-    "Ineffektive und Inkonsistente Reinigungsqualität": {
-        "kategorie": "QUALITÄT & ZUVERLÄSSIGKEIT",
-        "herausforderung": "Ineffektive und inkonsistente Reinigungsqualität sowie mangelnde Zuverlässigkeit in der Ausführung.",
-        "loesung": 'Als Fach- und Meisterbetrieb erhalten Sie "Alles aus einer Hand". Wir setzen auf geschultes Personal und feste Revierpläne für konstante Ergebnisse.',
-    },
-    "Mangelnde Zuverlässigkeit (Reliabilität)": {
-        "kategorie": "QUALITÄT & ZUVERLÄSSIGKEIT",
-        "herausforderung": "Ineffektive und inkonsistente Reinigungsqualität sowie mangelnde Zuverlässigkeit in der Ausführung.",
-        "loesung": 'Als Fach- und Meisterbetrieb erhalten Sie "Alles aus einer Hand". Wir setzen auf geschultes Personal und feste Revierpläne für konstante Ergebnisse.',
-    },
-    "fehlende Kontrolle": {
-        "kategorie": "TRANSPARENZ & KONTROLLE",
-        "herausforderung": "Fehlende Kontrolle, Intransparenz bei Leistung und Kosten sowie Zeitverlust durch eigenes Nachsteuern.",
-        "loesung": "Digitale Nachweis- und Kontrollsysteme schaffen volle Transparenz. Sie haben jederzeit Einblick, ohne selbst Zeit für ständige Kontrollen aufwenden zu müssen.",
-    },
-    "Intransparenz bei Leistung, Kosten und Prozessen": {
-        "kategorie": "TRANSPARENZ & KONTROLLE",
-        "herausforderung": "Fehlende Kontrolle, Intransparenz bei Leistung und Kosten sowie Zeitverlust durch eigenes Nachsteuern.",
-        "loesung": "Digitale Nachweis- und Kontrollsysteme schaffen volle Transparenz. Sie haben jederzeit Einblick, ohne selbst Zeit für ständige Kontrollen aufwenden zu müssen.",
-    },
-    "Schlechte Urlaubs/ und Krankheitsvertretung": {
-        "kategorie": "SERVICE & NACHHALTIGKEIT",
-        "herausforderung": "Schlechte Urlaubs- und Krankheitsvertretung, mangelhaftes Beschwerdemanagement.",
-        "loesung": "Wir garantieren Proaktivität in Beratung und Ausführung. Zudem sichern wir Nachhaltigkeit und Compliance, inklusive verlässlicher Vertretungsregelungen.",
-    },
-    "Schlechtes Beschwerdemanagement": {
-        "kategorie": "SERVICE & NACHHALTIGKEIT",
-        "herausforderung": "Schlechte Urlaubs- und Krankheitsvertretung, mangelhaftes Beschwerdemanagement.",
-        "loesung": "Wir garantieren Proaktivität in Beratung und Ausführung. Zudem sichern wir Nachhaltigkeit und Compliance, inklusive verlässlicher Vertretungsregelungen.",
-    },
-}
+# ── Bekannte Checkbox-Labels (für Smart-Parsing) ──
+KNOWN_PROBLEMS = [
+    "Ineffektive und Inkonsistente Reinigungsqualität",
+    "Schlechte Urlaubs/ und Krankheitsvertretung",
+    "fehlende Kontrolle",
+    "Intransparenz bei Leistung, Kosten und Prozessen",
+    "Mangelnde Zuverlässigkeit (Reliabilität)",
+    "Schlechtes Beschwerdemanagement",
+]
+
+KNOWN_WISHES = [
+    "Fachbetrieb / Meisterbetrieb",
+    "Nachhaltigkeit und Compliance",
+    "Proaktivität in Beratung und Ausführung",
+    "Digitale Nachweis- und Kontrollsysteme",
+    "Kein Zeitverlust durch ständiges kontrollieren",
+    "Alles aus einer Hand",
+]
 
 
-def _build_probleme_loesungen(selected_problems: list[str]) -> list[dict]:
-    """Group selected problems into unique categories with solutions."""
-    seen_categories: set[str] = set()
-    result: list[dict] = []
+def _parse_checkboxes_smart(val, known_labels: list[str]) -> list[str]:
+    """Parse comma-separated checkbox string, matching against known labels.
 
-    for problem in selected_problems:
-        mapping = PROBLEM_SOLUTION_MAP.get(problem)
-        if mapping and mapping["kategorie"] not in seen_categories:
-            seen_categories.add(mapping["kategorie"])
-            result.append(mapping)
+    Needed because some labels contain commas themselves
+    (e.g. 'Intransparenz bei Leistung, Kosten und Prozessen').
+    """
+    if isinstance(val, list):
+        return val
+    if not isinstance(val, str) or not val.strip():
+        return []
 
-    # If no problems selected, provide a default entry
-    if not result:
-        result.append({
-            "kategorie": "QUALITÄT & ZUVERLÄSSIGKEIT",
-            "herausforderung": "Wir haben Ihre aktuelle Situation analysiert und Optimierungspotenzial identifiziert.",
-            "loesung": "Mit dem G+C-Konzept bieten wir Ihnen eine maßgeschneiderte Reinigungslösung auf Meisterbetrieb-Niveau.",
-        })
+    # Try to match known labels within the string
+    remaining = val.strip()
+    found: list[str] = []
 
-    return result
+    # Sort known labels by length descending so longer matches win first
+    for label in sorted(known_labels, key=len, reverse=True):
+        if label in remaining:
+            found.append(label)
+            remaining = remaining.replace(label, "", 1)
+
+    # If smart matching found results, return them
+    if found:
+        # Preserve original order from the string
+        return sorted(found, key=lambda x: val.index(x))
+
+    # Fallback: simple comma split (for unknown labels)
+    return [v.strip() for v in val.split(",") if v.strip()]
 
 
 def map_superforms_to_template(data: dict) -> dict:
@@ -169,11 +161,8 @@ def map_superforms_to_template(data: dict) -> dict:
     service_fenster = data.get("Menge_2_2_2", "") == "on"
 
     # ── Probleme & Wünsche (Checkboxen) ──
-    selected_problems = _parse_checkboxes(data.get("Möglichkeit_2_2", ""))
-    selected_wishes = _parse_checkboxes(data.get("field_cCLhd", ""))
-
-    # ── Problem → Lösung Mapping ──
-    probleme_loesungen = _build_probleme_loesungen(selected_problems)
+    selected_problems = _parse_checkboxes_smart(data.get("Möglichkeit_2_2", ""), KNOWN_PROBLEMS)
+    selected_wishes = _parse_checkboxes_smart(data.get("field_cCLhd", ""), KNOWN_WISHES)
 
     # ── Datum ──
     heute = datetime.now(timezone.utc).strftime("%d.%m.%Y")
@@ -193,7 +182,6 @@ def map_superforms_to_template(data: dict) -> dict:
         "rech_plz": rech_plz,
         "rech_stadt": rech_stadt,
         # Optimierungspotenzial
-        "probleme_loesungen": probleme_loesungen,
         "selected_problems": selected_problems,
         "selected_wishes": selected_wishes,
         # Daten & Fakten
