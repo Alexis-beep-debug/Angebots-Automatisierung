@@ -338,27 +338,30 @@ def _build_lexoffice_line_items(td: dict) -> list[dict]:
         except (ValueError, AttributeError):
             return 0.0
 
+    freq_muell = td.get("intervall_muell", "2x Woche")
+    freq_san = td.get("intervall_sanitaer", "5x Woche")
+
     items = []
     price_map = [
-        ("Schreibtische", td.get("buero_tische", 0), "Stck", td.get("preis_schreibtische", "–")),
-        ("Bürostühle", td.get("buero_stuehle", 0), "Stck", td.get("preis_buerostuehle", "–")),
-        ("Mülleimer", td.get("muelleimer", 0), "Stck", td.get("preis_muelleimer", "–")),
-        ("Schränke/Regale", td.get("schraenke", 0), "Stck", td.get("preis_schraenke", "–")),
-        ("Büroflächen", td.get("buero_qm", 0), "m²", td.get("preis_buero_boden", "–")),
-        ("Meetingflächen", td.get("meeting_qm", 0), "m²", td.get("preis_meeting_boden", "–")),
-        ("Weitere Flächen", td.get("weitere_qm", 0), "m²", td.get("preis_weitere_boden", "–")),
-        ("WC-Anlagen", td.get("sanitaer_wc", 0), "Stck", td.get("preis_wc", "–")),
-        ("Waschbecken", td.get("sanitaer_waschbecken", 0), "Stck", td.get("preis_waschbecken", "–")),
-        ("Duschen", td.get("sanitaer_duschen", 0), "Stck", td.get("preis_duschen", "–")),
-        ("Küche", td.get("kueche_raeume", 0), "Stck", td.get("preis_kueche", "–")),
+        ("Schreibtische", td.get("buero_tische", 0), "Stck", td.get("preis_schreibtische", "–"), "1x/Woche"),
+        ("Bürostühle", td.get("buero_stuehle", 0), "Stck", td.get("preis_buerostuehle", "–"), "1x/Monat"),
+        ("Mülleimer", td.get("muelleimer", 0), "Stck", td.get("preis_muelleimer", "–"), freq_muell),
+        ("Schränke/Regale", td.get("schraenke", 0), "Stck", td.get("preis_schraenke", "–"), "1x/Woche"),
+        ("Büroflächen Reinigung", td.get("buero_qm", 0), "m²", td.get("preis_buero_boden", "–"), "2x/Woche"),
+        ("Meetingflächen Reinigung", td.get("meeting_qm", 0), "m²", td.get("preis_meeting_boden", "–"), "2x/Woche"),
+        ("Weitere Flächen Reinigung", td.get("weitere_qm", 0), "m²", td.get("preis_weitere_boden", "–"), "2x/Woche"),
+        ("WC-Anlagen", td.get("sanitaer_wc", 0), "Stck", td.get("preis_wc", "–"), freq_san),
+        ("Waschbecken", td.get("sanitaer_waschbecken", 0), "Stck", td.get("preis_waschbecken", "–"), freq_san),
+        ("Duschen", td.get("sanitaer_duschen", 0), "Stck", td.get("preis_duschen", "–"), "1x/Woche"),
+        ("Küche komplett", td.get("kueche_raeume", 0), "Stck", td.get("preis_kueche", "–"), "5x/Woche"),
     ]
 
-    for name, qty, unit, price_str in price_map:
+    for name, qty, unit, price_str, freq in price_map:
         price = _parse_price(str(price_str))
         if qty and price > 0:
             items.append({
                 "type": "custom",
-                "name": f"{name} ({qty} {unit})",
+                "name": f"{name} – {qty} {unit}, {freq}",
                 "quantity": 1,
                 "unitName": "Monat",
                 "unitPrice": {
