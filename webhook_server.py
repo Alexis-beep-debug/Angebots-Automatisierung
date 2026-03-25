@@ -162,6 +162,18 @@ async def generate_proposal(request: Request) -> dict:
     print(json.dumps(payload, indent=2, default=str, ensure_ascii=False), flush=True)
     print("=== END PAYLOAD ===", flush=True)
 
+    # Superforms sends nested objects: {"field": {"value": "...", "name": "...", ...}}
+    # Flatten to simple key-value: {"field": "value"}
+    flat_payload: dict[str, Any] = {}
+    for key, val in payload.items():
+        if isinstance(val, dict) and "value" in val:
+            flat_payload[key] = val["value"]
+        else:
+            flat_payload[key] = val
+    payload = flat_payload
+    print("=== FLATTENED PAYLOAD ===", flush=True)
+    print(json.dumps(payload, indent=2, default=str, ensure_ascii=False), flush=True)
+
     # Map Superforms fields to readable names
     template_data = proposal_generator.map_superforms_to_template(payload)
     company = template_data["firma_name"] or "Unbekannt"
