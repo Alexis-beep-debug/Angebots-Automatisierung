@@ -210,9 +210,17 @@ async def generate_proposal(request: Request) -> dict:
     person_id = person["id"]
     results["person_id"] = person_id
 
-    # --- 3. Pipedrive: Deal anlegen ---
-    deal = await _create_pipedrive_deal(person_id, deal_title)
-    results["deal_id"] = deal["id"]
+    # --- 3. Pipedrive: Deal anlegen / finden ---
+    existing_deals = await pd.get_person_deals(person_id)
+    deal = None
+    for d in existing_deals:
+        if d.get("title", "").startswith("Unterhaltsreinigung"):
+            deal = d
+            break
+    if not deal:
+        deal = await _create_pipedrive_deal(person_id, deal_title)
+    deal_id = deal["id"]
+    results["deal_id"] = deal_id
 
     # --- 4. Lexoffice: Kontakt anlegen (mit Billing-Adresse!) ---
     try:
@@ -242,8 +250,9 @@ async def generate_proposal(request: Request) -> dict:
         note_text += f"PDF: {results['pdf_path']}\n"
 
     await pd.add_note(person_id=person_id, content=note_text)
-    await pd.add_activity(
+    await _add_activity_with_deal(
         person_id=person_id,
+        deal_id=deal_id,
         subject=f"Angebot prüfen & versenden: {company}",
         note=f"Automatisch erstelltes Angebot für {deal_title}. Bitte prüfen und an den Kunden senden.",
         user_id=PIPEDRIVE_OWNER_USER_ID,
@@ -272,6 +281,32 @@ async def _create_pipedrive_person(
             payload["phone"] = [{"value": phone, "primary": True}]
         r = await client.post(
             f"{PIPEDRIVE_BASE}/persons",
+            params={"api_token": PIPEDRIVE_API_KEY},
+            json=payload,
+        )
+        r.raise_for_status()
+        return r.json()["data"]
+
+
+async def _add_activity_with_deal(
+    person_id: int, deal_id: int, subject: str, note: str = "", user_id: int | None = None
+) -> dict:
+    """Create a Pipedrive activity linked to both person AND deal."""
+    from config import PIPEDRIVE_API_KEY, PIPEDRIVE_BASE
+    import httpx
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
+        payload: dict[str, Any] = {
+            "subject": subject,
+            "type": "task",
+            "person_id": person_id,
+            "deal_id": deal_id,
+            "done": 0,
+            "note": note,
+        }
+        if user_id:
+            payload["user_id"] = user_id
+        r = await client.post(
+            f"{PIPEDRIVE_BASE}/activities",
             params={"api_token": PIPEDRIVE_API_KEY},
             json=payload,
         )
