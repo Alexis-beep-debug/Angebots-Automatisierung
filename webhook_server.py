@@ -195,138 +195,117 @@ async def _process_proposal(payload: dict) -> None:
         street = template_data["rech_strasse"]
         zip_code = template_data["rech_plz"]
         city = template_data["rech_stadt"]
-    deal_title = f"Unterhaltsreinigung – {company}"
+        deal_title = f"Unterhaltsreinigung – {company}"
 
-    results: dict[str, Any] = {}
+        results: dict[str, Any] = {}
 
-    # --- 1. PDF generieren ---
-    try:
-        pdf_path = proposal_generator.generate_and_save(payload)
-        results["pdf_path"] = str(pdf_path)
-        logger.info("PDF generated: %s", pdf_path)
-    except Exception as exc:
-        logger.error("PDF generation failed: %s", exc)
-        results["pdf_error"] = str(exc)
+        # --- 1. PDF generieren ---
+        try:
+            pdf_path = proposal_generator.generate_and_save(payload)
+            results["pdf_path"] = str(pdf_path)
+        except Exception as exc:
+            print(f"PDF generation failed: {exc}", flush=True)
+            results["pdf_error"] = str(exc)
 
-    # --- 2. Pipedrive: Person anlegen / finden ---
-    person = None
-    if email:
-        person = await pd.search_person_by_email(email)
-    if not person:
-        person = await _create_pipedrive_person(first_name, last_name, email, phone, company)
-    person_id = person["id"]
-    results["person_id"] = person_id
+        # --- 2. Pipedrive: Person anlegen / finden ---
+        person = None
+        if email:
+            person = await pd.search_person_by_email(email)
+        if not person:
+            person = await _create_pipedrive_person(first_name, last_name, email, phone, company)
+        person_id = person["id"]
+        results["person_id"] = person_id
 
-    # --- 3. Pipedrive: Deal anlegen / finden ---
-    existing_deals = await pd.get_person_deals(person_id)
-    deal = None
-    for d in existing_deals:
-        if d.get("title", "").startswith("Unterhaltsreinigung"):
-            deal = d
-            break
-    if not deal:
-        deal = await _create_pipedrive_deal(person_id, deal_title)
-    deal_id = deal["id"]
-    results["deal_id"] = deal_id
+        # --- 3. Pipedrive: Deal anlegen / finden ---
+        existing_deals = await pd.get_person_deals(person_id)
+        deal = None
+        for d in existing_deals:
+            if d.get("title", "").startswith("Unterhaltsreinigung"):
+                deal = d
+                break
+        if not deal:
+            deal = await _create_pipedrive_deal(person_id, deal_title)
+        deal_id = deal["id"]
+        results["deal_id"] = deal_id
 
-    # --- 4. Lexoffice: Kontakt + Angebot anlegen ---
-    lexoffice_pdf_bytes = None
-    try:
-        lx_contact = await lx.get_or_create_contact(
-            company_name=company,
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            phone=phone,
-            street=street,
-            zip_code=zip_code,
-            city=city,
-        )
-        contact_id = lx_contact.get("id") or ""
-        if not contact_id and lx_contact.get("resourceUri"):
-            contact_id = lx_contact["resourceUri"].rstrip("/").split("/")[-1]
-        results["lexoffice_contact_id"] = contact_id
-        print(f"Lexoffice contact: {contact_id}", flush=True)
-
-        # Lexoffice Angebot erstellen (mit Einzelposten)
-        if contact_id:
-            line_items = _build_lexoffice_line_items(template_data)
-            quote = await lx.create_quote(
-                contact_id=contact_id,
-                title="Unterhaltsreinigung",
-                introduction=f"Angebot für die Unterhaltsreinigung am Standort {template_data['objekt_adresse']}.",
-                line_items=line_items,
+        # --- 4. Lexoffice: Kontakt + Angebot anlegen ---
+        lexoffice_pdf_bytes = None
+        try:
+            lx_contact = await lx.get_or_create_contact(
+                company_name=company, email=email, first_name=first_name,
+                last_name=last_name, phone=phone, street=street,
+                zip_code=zip_code, city=city,
             )
-            quote_id = quote.get("id", "")
-            results["lexoffice_quote_id"] = quote_id
-            print(f"Lexoffice quote created: {quote_id}", flush=True)
+            contact_id = lx_contact.get("id") or ""
+            if not contact_id and lx_contact.get("resourceUri"):
+                contact_id = lx_contact["resourceUri"].rstrip("/").split("/")[-1]
+            results["lexoffice_contact_id"] = contact_id
+            print(f"Lexoffice contact: {contact_id}", flush=True)
 
-            # PDF herunterladen
-            if quote_id:
-                import asyncio
-                await asyncio.sleep(2)  # Lexoffice braucht kurz zum Rendern
-                try:
-                    lexoffice_pdf_bytes = await lx.download_pdf(quote_id)
-                    print(f"Lexoffice PDF downloaded: {len(lexoffice_pdf_bytes)} bytes", flush=True)
-                except Exception as pdf_exc:
-                    print(f"Lexoffice PDF download failed: {pdf_exc}", flush=True)
+            if contact_id:
+                line_items = _build_lexoffice_line_items(template_data)
+                quote = await lx.create_quote(
+                    contact_id=contact_id, title="Unterhaltsreinigung",
+                    introduction=f"Angebot für die Unterhaltsreinigung am Standort {template_data['objekt_adresse']}.",
+                    line_items=line_items,
+                )
+                quote_id = quote.get("id", "")
+                results["lexoffice_quote_id"] = quote_id
+                print(f"Lexoffice quote created: {quote_id}", flush=True)
 
-    except Exception as exc:
-        print(f"Lexoffice failed: {exc}", flush=True)
-        results["lexoffice_error"] = str(exc)
+                if quote_id:
+                    import asyncio as aio
+                    await aio.sleep(2)
+                    try:
+                        lexoffice_pdf_bytes = await lx.download_pdf(quote_id)
+                        print(f"Lexoffice PDF downloaded: {len(lexoffice_pdf_bytes)} bytes", flush=True)
+                    except Exception as pdf_exc:
+                        print(f"Lexoffice PDF download failed: {pdf_exc}", flush=True)
+        except Exception as exc:
+            print(f"Lexoffice failed: {exc}", flush=True)
+            results["lexoffice_error"] = str(exc)
 
-    # --- 5. Google Drive: Ordner erstellen + PDFs hochladen ---
-    drive_link = ""
-    try:
-        folder_name = f"Angebot – {company}"
-        folder_id = gdrive.create_folder(folder_name)
-        drive_link = gdrive.get_folder_link(folder_id)
-        results["drive_folder"] = drive_link
-        print(f"Drive folder created: {drive_link}", flush=True)
+        # --- 5. Google Drive: Ordner erstellen + PDFs hochladen ---
+        drive_link = ""
+        try:
+            folder_name = f"Angebot – {company}"
+            folder_id = gdrive.create_folder(folder_name)
+            drive_link = gdrive.get_folder_link(folder_id)
+            results["drive_folder"] = drive_link
+            print(f"Drive folder created: {drive_link}", flush=True)
 
-        # Upload Angebots-PDF (unsere generierte Version)
-        if results.get("pdf_path"):
-            from pathlib import Path
-            pdf_file = Path(results["pdf_path"])
-            if pdf_file.exists():
-                pdf_bytes = pdf_file.read_bytes()
-                gdrive.upload_pdf(pdf_bytes, pdf_file.name, folder_id)
-                print(f"Uploaded Angebots-PDF to Drive", flush=True)
+            if results.get("pdf_path"):
+                from pathlib import Path
+                pdf_file = Path(results["pdf_path"])
+                if pdf_file.exists():
+                    gdrive.upload_pdf(pdf_file.read_bytes(), pdf_file.name, folder_id)
+                    print(f"Uploaded Angebots-PDF to Drive", flush=True)
 
-        # Upload Lexoffice-PDF
-        if lexoffice_pdf_bytes:
-            lx_filename = f"Lexoffice_Angebot_{company.replace(' ', '_')}.pdf"
-            gdrive.upload_pdf(lexoffice_pdf_bytes, lx_filename, folder_id)
-            print(f"Uploaded Lexoffice-PDF to Drive", flush=True)
+            if lexoffice_pdf_bytes:
+                lx_filename = f"Lexoffice_Angebot_{company.replace(' ', '_')}.pdf"
+                gdrive.upload_pdf(lexoffice_pdf_bytes, lx_filename, folder_id)
+                print(f"Uploaded Lexoffice-PDF to Drive", flush=True)
+        except Exception as exc:
+            print(f"Google Drive failed: {exc}", flush=True)
+            results["drive_error"] = str(exc)
 
-    except Exception as exc:
-        print(f"Google Drive failed: {exc}", flush=True)
-        results["drive_error"] = str(exc)
+        # --- 6. Pipedrive: Notiz + Aufgabe (mit Drive-Link) ---
+        ts = _now_str()
+        note_text = f"[{ts}] Angebot automatisch erstellt für {company}\nDeal: {deal_title}\n"
+        if drive_link:
+            note_text += f"Google Drive: {drive_link}\n"
 
-    # --- 6. Pipedrive: Notiz + Aufgabe (mit Drive-Link) ---
-    ts = _now_str()
-    note_text = (
-        f"[{ts}] Angebot automatisch erstellt für {company}\n"
-        f"Deal: {deal_title}\n"
-    )
-    if drive_link:
-        note_text += f"📁 Google Drive: {drive_link}\n"
-    if results.get("pdf_path"):
-        note_text += f"PDF: {results['pdf_path']}\n"
+        await pd.add_note(person_id=person_id, content=note_text)
 
-    await pd.add_note(person_id=person_id, content=note_text)
+        activity_note = f"Automatisch erstelltes Angebot für {deal_title}. Bitte prüfen und an den Kunden senden."
+        if drive_link:
+            activity_note += f"\n\nGoogle Drive Ordner: {drive_link}"
 
-    activity_note = f"Automatisch erstelltes Angebot für {deal_title}. Bitte prüfen und an den Kunden senden."
-    if drive_link:
-        activity_note += f"\n\n📁 Google Drive Ordner: {drive_link}"
-
-    await _add_activity_with_deal(
-        person_id=person_id,
-        deal_id=deal_id,
-        subject=f"Angebot prüfen & versenden: {company}",
-        note=activity_note,
-        user_id=PIPEDRIVE_OWNER_USER_ID,
-    )
+        await _add_activity_with_deal(
+            person_id=person_id, deal_id=deal_id,
+            subject=f"Angebot prüfen & versenden: {company}",
+            note=activity_note, user_id=PIPEDRIVE_OWNER_USER_ID,
+        )
 
         print(f"=== PROPOSAL PROCESSING COMPLETE for {company} ===", flush=True)
     except Exception as exc:
