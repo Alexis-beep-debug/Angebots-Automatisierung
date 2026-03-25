@@ -20,61 +20,6 @@ _TEMPLATE_DIR = Path(__file__).parent / "templates"
 _OUTPUT_DIR = Path(__file__).parent / "output"
 _OUTPUT_DIR.mkdir(exist_ok=True)
 
-# ── Problem → Individuelle Herausforderung + G+C-Ansatz ──
-# Jedes Problem bekommt einen eigenen, individuellen Text
-PROBLEM_SOLUTION_MAP = {
-    "Ineffektive und Inkonsistente Reinigungsqualität": {
-        "kategorie": "REINIGUNGSQUALITÄT",
-        "herausforderung": "Schwankende Ergebnisse, unterschiedliche Standards je nach Einsatztag und Reinigungskraft – das kostet Vertrauen und Nerven.",
-        "loesung": "Feste Revierpläne, geschultes Fachpersonal und standardisierte Checklisten garantieren gleichbleibend hohe Qualität bei jedem Einsatz.",
-    },
-    "Mangelnde Zuverlässigkeit (Reliabilität)": {
-        "kategorie": "ZUVERLÄSSIGKEIT",
-        "herausforderung": "Reinigungskräfte erscheinen nicht, Aufgaben werden vergessen oder nur teilweise erledigt – Sie müssen ständig hinterher sein.",
-        "loesung": "Als Meisterbetrieb mit festen Teams und klaren Einsatzplänen garantieren wir Zuverlässigkeit. Digitale Zeiterfassung dokumentiert jeden Einsatz lückenlos.",
-    },
-    "fehlende Kontrolle": {
-        "kategorie": "KONTROLLE",
-        "herausforderung": "Sie haben keinen Überblick, ob und wann gereinigt wurde. Mängel fallen erst auf, wenn es zu spät ist.",
-        "loesung": "Unser digitales Kontrollsystem mit Echtzeit-Reporting gibt Ihnen jederzeit Einblick – ohne selbst vor Ort kontrollieren zu müssen.",
-    },
-    "Intransparenz bei Leistung, Kosten und Prozessen": {
-        "kategorie": "TRANSPARENZ",
-        "herausforderung": "Unklare Leistungsbeschreibungen, versteckte Kosten und intransparente Abrechnungen machen eine Bewertung des Preis-Leistungs-Verhältnisses unmöglich.",
-        "loesung": "Detaillierte Leistungsverzeichnisse, offene Einzelpreis-Kalkulation und monatliche Leistungsberichte schaffen volle Kostentransparenz.",
-    },
-    "Schlechte Urlaubs/ und Krankheitsvertretung": {
-        "kategorie": "VERTRETUNGSREGELUNG",
-        "herausforderung": "Bei Urlaub oder Krankheit fällt die Reinigung aus oder wird von uneingearbeiteten Kräften übernommen – das Ergebnis leidet.",
-        "loesung": "Feste Vertretungsteams, die Ihr Objekt kennen, springen nahtlos ein. So bleibt die Qualität auch bei Personalwechsel konstant.",
-    },
-    "Schlechtes Beschwerdemanagement": {
-        "kategorie": "BESCHWERDEMANAGEMENT",
-        "herausforderung": "Reklamationen versanden, Rückmeldungen bleiben ohne Konsequenz – Sie fühlen sich als Kunde nicht ernst genommen.",
-        "loesung": "Persönlicher Objektleiter als fester Ansprechpartner, 24h-Reaktionszeit bei Beschwerden und dokumentierte Nachbesserung mit Rückmeldung an Sie.",
-    },
-}
-
-
-def _build_probleme_loesungen(selected_problems: list[str]) -> list[dict]:
-    """Return individual problem/solution entry for each selected problem."""
-    result: list[dict] = []
-
-    for problem in selected_problems:
-        mapping = PROBLEM_SOLUTION_MAP.get(problem)
-        if mapping:
-            result.append(mapping)
-
-    # If no problems selected, provide a default entry
-    if not result:
-        result.append({
-            "kategorie": "QUALITÄT & ZUVERLÄSSIGKEIT",
-            "herausforderung": "Wir haben Ihre aktuelle Situation analysiert und Optimierungspotenzial identifiziert.",
-            "loesung": "Mit dem G+C-Konzept bieten wir Ihnen eine maßgeschneiderte Reinigungslösung auf Meisterbetrieb-Niveau.",
-        })
-
-    return result
-
 
 def map_superforms_to_template(data: dict) -> dict:
     """
@@ -170,9 +115,6 @@ def map_superforms_to_template(data: dict) -> dict:
     selected_problems = _parse_checkboxes(data.get("Möglichkeit_2_2", ""))
     selected_wishes = _parse_checkboxes(data.get("field_cCLhd", ""))
 
-    # ── Problem → Lösung Mapping ──
-    probleme_loesungen = _build_probleme_loesungen(selected_problems)
-
     # ── Datum ──
     heute = datetime.now(timezone.utc).strftime("%d.%m.%Y")
 
@@ -191,7 +133,6 @@ def map_superforms_to_template(data: dict) -> dict:
         "rech_plz": rech_plz,
         "rech_stadt": rech_stadt,
         # Optimierungspotenzial
-        "probleme_loesungen": probleme_loesungen,
         "selected_problems": selected_problems,
         "selected_wishes": selected_wishes,
         # Daten & Fakten
