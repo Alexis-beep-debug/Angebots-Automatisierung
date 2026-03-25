@@ -147,10 +147,17 @@ async def generate_proposal(request: Request) -> dict:
     Payload: Direkt das Superforms-Webhook-JSON mit Feldnamen wie
     Firmenname, Anschrift, first_name, last_name, Email, etc.
     """
-    payload: dict[str, Any] = await request.json()
-
-    # Log the raw payload for debugging
+    # Accept both JSON and form-urlencoded (Superforms may send either)
     import json
+    content_type = request.headers.get("content-type", "")
+    print(f"=== CONTENT-TYPE: {content_type} ===", flush=True)
+
+    if "application/json" in content_type:
+        payload: dict[str, Any] = await request.json()
+    else:
+        form_data = await request.form()
+        payload = dict(form_data)
+
     print("=== RAW WEBHOOK PAYLOAD ===", flush=True)
     print(json.dumps(payload, indent=2, default=str, ensure_ascii=False), flush=True)
     print("=== END PAYLOAD ===", flush=True)
