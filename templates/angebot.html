@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Angebot – {{ firma_name }}</title>
+<style>
+  /* ── Google Fonts (embedded for PDF) ── */
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=Roboto+Slab:wght@400;600;700&display=swap');
+
+  /* ── Variables ── */
+  :root {
+    --primary: #0B426E;
+    --primary-light: #0B426E80;
+    --secondary: #6C7A85;
+    --accent: #E7515A;
+    --green: #1EAF58;
+    --blue-light: #8DCCFF;
+    --gold: #FFB700;
+    --text: #464646;
+    --text-light: #6C7A85;
+    --bg: #ffffff;
+    --bg-light: #F4F7FA;
+  }
+
+  /* ── Reset & Base ── */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Roboto', sans-serif;
+    color: var(--text);
+    font-size: 10pt;
+    line-height: 1.5;
+    background: var(--bg);
+  }
+
+  /* ── Page Setup (A4 Landscape for presentation style) ── */
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+  .page {
+    width: 297mm;
+    height: 210mm;
+    padding: 0;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+  .page:last-child { page-break-after: avoid; }
+
+  /* ── Header Bar (top bar on each page) ── */
+  .header-bar {
+    background: var(--primary);
+    color: #fff;
+    padding: 12px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Roboto Slab', serif;
+    font-size: 11pt;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .header-bar .logo-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* ── Page Content ── */
+  .page-content {
+    padding: 30px 40px 20px 40px;
+  }
+
+  /* ── Section Title with red accent ── */
+  .section-title {
+    font-family: 'Roboto Slab', serif;
+    font-size: 20pt;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 10px;
+    padding-left: 16px;
+    border-left: 4px solid var(--accent);
+  }
+  .section-subtitle {
+    color: var(--text-light);
+    font-size: 10pt;
+    margin-bottom: 24px;
+  }
+
+  /* ── Footer ── */
+  .page-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 8pt;
+    color: var(--text-light);
+    padding: 8px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    border: 1px solid #dce3e8;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .card-header {
+    background: var(--primary);
+    color: #fff;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .card-body { padding: 16px; }
+
+  /* ── Grid helpers ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  /* ── Table ── */
+  .calc-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  .calc-table th {
+    background: var(--primary);
+    color: #fff;
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 9pt;
+  }
+  .calc-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid #e8ecf0;
+  }
+  .calc-table td:last-child { text-align: right; font-weight: 500; }
+  .calc-table .section-row td {
+    background: var(--bg-light);
+    font-weight: 600;
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary);
+    padding: 6px 12px;
+  }
+
+  /* ── Total bar ── */
+  .total-bar {
+    background: var(--bg-light);
+    border: 2px solid var(--primary);
+    border-radius: 6px;
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+  }
+  .total-bar .label {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 11pt;
+  }
+  .total-bar .amount {
+    font-family: 'Roboto Slab', serif;
+    font-size: 22pt;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* ── Problem/Solution cards ── */
+  .problem-card {
+    border: 1px solid #dce3e8;
+    border-radius: 6px;
+    padding: 18px;
+    margin-bottom: 16px;
+    border-left: 4px solid var(--accent);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .problem-card h3 {
+    grid-column: 1 / -1;
+    color: var(--primary);
+    font-size: 11pt;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .problem-label {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .problem-label.challenge { color: var(--accent); }
+  .problem-label.solution { color: var(--green); }
+  .problem-text { font-size: 9pt; color: var(--text); font-style: italic; }
+  .solution-text { font-size: 9pt; color: var(--text); }
+
+  /* ── Info Card (Daten & Fakten) ── */
+  .info-card {
+    border: 1px solid #dce3e8;
+    border-radius: 6px;
+    text-align: center;
+    overflow: hidden;
+    border-bottom: 3px solid var(--accent);
+  }
+  .info-card .icon-area {
+    padding: 16px 0 8px 0;
+  }
+  .info-card .icon-circle {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .info-card .icon-circle svg { width: 26px; height: 26px; fill: #fff; }
+  .info-card .big-number {
+    font-family: 'Roboto Slab', serif;
+    font-size: 18pt;
+    font-weight: 700;
+    color: var(--primary);
+    margin: 4px 0;
+  }
+  .info-card .card-label {
+    font-size: 7pt;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-light);
+    margin-bottom: 10px;
+  }
+  .info-card .details {
+    text-align: left;
+    padding: 10px 16px 14px;
+    border-top: 1px solid #e8ecf0;
+    font-size: 8.5pt;
+    line-height: 1.8;
+  }
+
+  /* ── Module cards (Zusatzmodule) ── */
+  .module-card {
+    border: 1px solid #dce3e8;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .module-card .module-header {
+    background: var(--primary);
+    color: #fff;
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 9pt;
+    text-transform: uppercase;
+  }
+  .module-card .module-body {
+    padding: 14px 16px;
+    font-size: 9pt;
+  }
+  .module-card .module-freq {
+    font-size: 8pt;
+    font-style: italic;
+    color: var(--text-light);
+    margin-top: 6px;
+  }
+  .module-card .module-price {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    padding: 4px 14px;
+    border-radius: 3px;
+    font-weight: 600;
+    font-size: 8.5pt;
+    margin-top: 8px;
+  }
+
+  /* ── Closing page ── */
+  .closing-page {
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .closing-page h2 {
+    font-family: 'Roboto Slab', serif;
+    font-size: 28pt;
+    font-weight: 700;
+    margin-bottom: 30px;
+    line-height: 1.3;
+  }
+  .closing-page .contact-info {
+    font-size: 11pt;
+    line-height: 2;
+  }
+
+  /* ── Cover page ── */
+  .cover-left {
+    background: var(--primary);
+    color: #fff;
+    width: 38%;
+    height: 100%;
+    padding: 40px 30px;
+    float: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .cover-right {
+    margin-left: 38%;
+    padding: 40px 40px;
+    height: 100%;
+  }
+  .cover-left .logo-area {
+    margin-bottom: 30px;
+  }
+  .cover-left .logo-area .logo-text {
+    font-family: 'Roboto Slab', serif;
+    font-size: 16pt;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .cover-left .logo-area .logo-sub {
+    font-size: 9pt;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.7);
+    margin-top: 2px;
+  }
+  .cover-left h1 {
+    font-family: 'Roboto Slab', serif;
+    font-size: 28pt;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .cover-left .cover-type {
+    font-size: 12pt;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 24px;
+  }
+  .cover-left .cover-divider {
+    width: 60px;
+    height: 3px;
+    background: var(--accent);
+    margin-bottom: 24px;
+  }
+  .cover-meta {
+    font-size: 8.5pt;
+    line-height: 2;
+  }
+  .cover-meta .meta-label {
+    text-transform: uppercase;
+    font-size: 7pt;
+    letter-spacing: 1px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .cover-bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 38%;
+    height: 8px;
+    background: var(--accent);
+  }
+
+  /* Cover right side */
+  .cover-right .addressline {
+    font-size: 8.5pt;
+    color: var(--text-light);
+    margin-bottom: 20px;
+  }
+  .cover-right .offer-title {
+    font-family: 'Roboto Slab', serif;
+    font-size: 16pt;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .cover-right .greeting {
+    font-size: 10pt;
+    line-height: 1.8;
+    color: var(--text);
+  }
+  .cover-right .greeting p { margin-bottom: 14px; }
+  .cover-right .signoff {
+    margin-top: 20px;
+    font-size: 10pt;
+    line-height: 1.6;
+  }
+
+  /* ── Logo SVG inline ── */
+  .gc-logo-svg { width: 48px; height: 48px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+{# ═══════════════════════════════════════════════════════════
+   SEITE 1: DECKBLATT
+   ═══════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="cover-left">
+    <div>
+      <div class="logo-area">
+        <svg class="gc-logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
+          <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
+          <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
+          <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
+        </svg>
+        <div class="logo-text">G+C<br>FACILITY</div>
+        <div class="logo-sub">GMBH</div>
+      </div>
+
+      <h1>ANGEBOT</h1>
+      <div class="cover-divider"></div>
+      <div class="cover-type">Unterhaltsreinigung</div>
+    </div>
+
+    <div class="cover-meta">
+      <div class="meta-label">Datum</div>
+      <div>{{ datum }}</div>
+      <br>
+      <div class="meta-label">Angebots-Nr.</div>
+      <div>{{ angebots_id }}</div>
+      <br>
+      <div class="meta-label">Objekt</div>
+      <div>{{ objekt_adresse }}</div>
+      <br>
+      <div class="meta-label">Ansprechpartner</div>
+      <div>{{ kontaktperson_name }}</div>
+    </div>
+  </div>
+  <div class="cover-bottom-bar"></div>
+
+  <div class="cover-right">
+    <div class="addressline">
+      {{ firma_name }} &nbsp;|&nbsp; z.Hd. {{ kontaktperson_name }} &nbsp;|&nbsp; {{ objekt_adresse }}
+    </div>
+
+    <div class="offer-title">Angebot: Unterhaltsreinigung {{ objekt_adresse }}</div>
+
+    <div class="greeting">
+      <p>Sehr geehrte(r) {{ kontaktperson_name }},</p>
+
+      <p>vielen Dank für das angenehme Gespräch am {{ datum_begehung }}. Es hat uns gefreut, Ihre
+      Räumlichkeiten und Ihre Anforderungen kennenzulernen.</p>
+
+      <p>Ein sauberes Arbeitsumfeld ist mehr als nur Optik – es ist Wertschätzung gegenüber Ihren
+      Mitarbeitern. Mit dem G+C-Konzept bieten wir Ihnen eine Reinigungslösung, die Qualität,
+      Verlässlichkeit und Nachhaltigkeit verbindet.</p>
+
+      <p>Auf den folgenden Seiten finden Sie zunächst unsere Lösungen für Ihre aktuellen
+      Herausforderungen, gefolgt von einer detaillierten Analyse Ihrer Flächen und dem exakten
+      Leistungsplan inklusive transparenter Einzelpreis-Kalkulation.</p>
+
+      <div class="signoff">
+        Mit freundlichen Grüßen<br>
+        Ihr G+C Facility Team
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   SEITE 2: OPTIMIERUNGSPOTENZIAL
+   ═══════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="header-bar">
+    <span>Lösungsansatz</span>
+    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
+      <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
+      <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
+      <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
+    </svg>
+  </div>
+  <div class="page-content">
+    <div class="section-title">OPTIMIERUNGSPOTENZIAL</div>
+    <div class="section-subtitle">Aus der Bestandsaufnahme haben wir folgende Kernprobleme identifiziert und stellen Ihnen unseren konkreten Lösungsansatz gegenüber.</div>
+
+    {% for item in probleme_loesungen %}
+    <div class="problem-card">
+      <h3>{{ item.kategorie }}</h3>
+      <div>
+        <div class="problem-label challenge">Herausforderung:</div>
+        <div class="problem-text">{{ item.herausforderung }}</div>
+      </div>
+      <div>
+        <div class="problem-label solution">Der G+C-Ansatz:</div>
+        <div class="solution-text">{{ item.loesung }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="page-footer">Seite 2/{{ total_pages }} — Lösungen &amp; Ziele</div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   SEITE 3: DATEN & FAKTEN
+   ═══════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="header-bar">
+    <span>Objektanalyse</span>
+    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
+      <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
+      <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
+      <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
+    </svg>
+  </div>
+  <div class="page-content">
+    <div class="section-title">DATEN &amp; FAKTEN</div>
+    <div class="section-subtitle">Für eine transparente Kalkulation haben wir folgende Eckdaten Ihres Objekts erfasst:</div>
+
+    <div class="grid-3">
+      {# Karte 1: Reinigungsfläche #}
+      <div class="info-card">
+        <div class="icon-area">
+          <div class="icon-circle">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/></svg>
+          </div>
+        </div>
+        <div class="big-number">{{ gesamt_qm }} m²</div>
+        <div class="card-label">Reinigungsfläche</div>
+        <div class="details">
+          Büro: {{ buero_qm|default('–') }} m²<br>
+          Meeting: {{ meeting_qm|default('–') }} m²<br>
+          Küche: {{ kueche_qm|default('–') }} m²<br>
+          Sanitär: {{ sanitaer_qm|default('–') }} m²<br>
+          Weitere: {{ weitere_qm|default('–') }} m²
+        </div>
+      </div>
+
+      {# Karte 2: Räume #}
+      <div class="info-card">
+        <div class="icon-area">
+          <div class="icon-circle">
+            <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+          </div>
+        </div>
+        <div class="big-number">{{ anzahl_raeume_gesamt }}</div>
+        <div class="card-label">Räume gesamt</div>
+        <div class="details">
+          Büroräume: {{ buero_raeume|default(0) }}<br>
+          Meetingräume: {{ meeting_raeume|default(0) }}<br>
+          Küchen: {{ kueche_raeume|default(0) }}<br>
+          Sanitärräume: {{ sanitaer_raeume|default(0) }}
+        </div>
+      </div>
+
+      {# Karte 3: Ausstattung #}
+      <div class="info-card">
+        <div class="icon-area">
+          <div class="icon-circle">
+            <svg viewBox="0 0 24 24"><path d="M20 6H4v2h16V6zm-2 4H6v2h12v-2zm2 4H4v2h16v-2zm-2 4H6v2h12v-2z"/></svg>
+          </div>
+        </div>
+        <div class="big-number">{{ anzahl_arbeitsplaetze }}</div>
+        <div class="card-label">Arbeitsplätze</div>
+        <div class="details">
+          Sanitär: {{ sanitaer_wc|default(0) }} WCs<br>
+          Küche: {{ kueche_raeume|default(0) }}x vorhanden<br>
+          Mülleimer: {{ muelleimer|default(0) }} Stk.
+        </div>
+      </div>
+    </div>
+
+    {% if objektbeschreibung %}
+    <div style="margin-top: 20px; padding: 14px 18px; background: var(--bg-light); border-left: 4px solid var(--primary); border-radius: 4px; font-size: 9pt;">
+      <strong>Objektbeschreibung:</strong> {{ objektbeschreibung }}
+    </div>
+    {% endif %}
+  </div>
+  <div class="page-footer">Seite 3/{{ total_pages }} — Objektanalyse</div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   SEITE 4: KALKULATION IM DETAIL
+   ═══════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="header-bar">
+    <span>Kalkulation im Detail</span>
+    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
+      <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
+      <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
+      <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
+    </svg>
+  </div>
+  <div class="page-content">
+    <div class="section-title">KALKULATION IM DETAIL</div>
+    <div class="section-subtitle">Transparenz ist unser Prinzip. Hier finden Sie die Aufschlüsselung der monatlichen Kosten nach Leistungsbereichen.</div>
+
+    <table class="calc-table">
+      {# ── Büroräume & Ausstattung ── #}
+      <tr class="section-row"><td colspan="2">Büroräume &amp; Ausstattung</td></tr>
+      {% if buero_tische %}
+      <tr><td>Schreibtische ({{ buero_tische }} Stck)</td><td>{{ preis_schreibtische|default('–') }} €</td></tr>
+      {% endif %}
+      {% if buero_stuehle %}
+      <tr><td>Bürostühle ({{ buero_stuehle }} Stck)</td><td>{{ preis_buerostuehle|default('–') }} €</td></tr>
+      {% endif %}
+      {% if muelleimer %}
+      <tr><td>Mülleimer ({{ muelleimer }} Stck)</td><td>{{ preis_muelleimer|default('–') }} €</td></tr>
+      {% endif %}
+      {% if schraenke %}
+      <tr><td>Schränke/Regale ({{ schraenke }} Stck)</td><td>{{ preis_schraenke|default('–') }} €</td></tr>
+      {% endif %}
+
+      {# ── Bodenflächen ── #}
+      <tr class="section-row"><td colspan="2">Bodenflächen</td></tr>
+      {% if buero_qm %}
+      <tr><td>Büroflächen ({{ buero_qm }} m²)</td><td>{{ preis_buero_boden|default('–') }} €</td></tr>
+      {% endif %}
+      {% if meeting_qm %}
+      <tr><td>Meetingflächen ({{ meeting_qm }} m²)</td><td>{{ preis_meeting_boden|default('–') }} €</td></tr>
+      {% endif %}
+      {% if weitere_qm %}
+      <tr><td>Weitere Flächen ({{ weitere_qm }} m²)</td><td>{{ preis_weitere_boden|default('–') }} €</td></tr>
+      {% endif %}
+
+      {# ── Sanitär & Hygiene ── #}
+      <tr class="section-row"><td colspan="2">Sanitär &amp; Hygiene</td></tr>
+      {% if sanitaer_wc %}
+      <tr><td>WC-Anlagen ({{ sanitaer_wc }} Stck)</td><td>{{ preis_wc|default('–') }} €</td></tr>
+      {% endif %}
+      {% if sanitaer_waschbecken %}
+      <tr><td>Waschbecken ({{ sanitaer_waschbecken }} Stck)</td><td>{{ preis_waschbecken|default('–') }} €</td></tr>
+      {% endif %}
+      {% if sanitaer_duschen %}
+      <tr><td>Duschen ({{ sanitaer_duschen }} Stck)</td><td>{{ preis_duschen|default('–') }} €</td></tr>
+      {% endif %}
+
+      {# ── Küche ── #}
+      <tr class="section-row"><td colspan="2">Küche</td></tr>
+      {% if kueche_raeume %}
+      <tr><td>Küchen ({{ kueche_raeume }} Stck)</td><td>{{ preis_kueche|default('–') }} €</td></tr>
+      {% endif %}
+    </table>
+
+    <div class="total-bar">
+      <div class="label">GESAMTBETRAG (NETTO):</div>
+      <div class="amount">{{ gesamtpreis_netto|default('–') }} €</div>
+    </div>
+  </div>
+  <div class="page-footer">Seite 4/{{ total_pages }} — Kalkulation</div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   SEITE 5: EMPFOHLENE ZUSATZMODULE
+   ═══════════════════════════════════════════════════════════ #}
+<div class="page">
+  <div class="header-bar">
+    <span>Zusatzmodule</span>
+    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
+      <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
+      <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
+      <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
+    </svg>
+  </div>
+  <div class="page-content">
+    <div class="section-title">EMPFOHLENE ZUSATZMODULE</div>
+    <div class="section-subtitle">Werten Sie Ihr Paket auf. Folgende Leistungen passen perfekt zu Ihrem Objekt:</div>
+
+    <div class="grid-2">
+      {% if service_glasreinigung %}
+      <div class="module-card">
+        <div class="module-header">Glasreinigung</div>
+        <div class="module-body">
+          Streifenfreie Sicht für alle Büros. Inklusive Rahmenpflege.
+          <div class="module-freq">Empfohlen: 1x pro Quartal</div>
+          <div class="module-price">Auf Anfrage</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if service_teppichreinigung %}
+      <div class="module-card">
+        <div class="module-header">Teppich-Tiefenreinigung</div>
+        <div class="module-body">
+          Entfernt Laufstraßen und tiefsitzenden Schmutz. Werterhalt für {{ buero_qm|default('–') }} m².
+          <div class="module-freq">Empfohlen: 1x jährlich</div>
+          <div class="module-price">Auf Anfrage</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if service_kabelmanagement %}
+      <div class="module-card">
+        <div class="module-header">Kabelmanagement</div>
+        <div class="module-body">
+          Wir ordnen den Kabelsalat unter den {{ buero_tische|default('–') }} Schreibtischen.
+          <div class="module-freq">Einmalige Aktion für Sicherheit</div>
+          <div class="module-price">Nach Aufwand</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if service_waescheservice %}
+      <div class="module-card">
+        <div class="module-header">Wäscheservice</div>
+        <div class="module-body">
+          Frische Handtücher und Küchentücher im Austausch-Service.
+          <div class="module-freq">Wöchentlicher Tausch</div>
+          <div class="module-price">Monatspauschale</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if service_pflanzenpflege %}
+      <div class="module-card">
+        <div class="module-header">Pflanzenpflege</div>
+        <div class="module-body">
+          Professionelle Pflege Ihrer Büropflanzen – Gießen, Düngen, Blattpflege.
+          <div class="module-freq">{{ intervall_pflanzenpflege|default('1x Woche') }}</div>
+          <div class="module-price">Monatspauschale</div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if service_duftservice %}
+      <div class="module-card">
+        <div class="module-header">Duftservice</div>
+        <div class="module-body">
+          Professioneller Duftservice im Eingangsbereich für einen positiven ersten Eindruck.
+          <div class="module-freq">Dauerhaft</div>
+          <div class="module-price">Monatspauschale</div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="total-bar" style="margin-top: 24px;">
+      <div class="label">INVESTITION FÜR SAUBERE QUALITÄT</div>
+      <div class="amount">{{ gesamtpreis_netto|default('–') }} € <span style="font-size: 11pt; font-weight: 400;">/ Monat (netto)</span></div>
+    </div>
+  </div>
+  <div class="page-footer">Seite 5/{{ total_pages }} — Zusatzmodule</div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════
+   SEITE 6: GEMEINSAM FÜR EIN SAUBERES ERGEBNIS
+   ═══════════════════════════════════════════════════════════ #}
+<div class="page closing-page">
+  <svg style="width: 80px; height: 80px; margin-bottom: 30px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
+    <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
+    <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
+    <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
+  </svg>
+
+  <h2>GEMEINSAM FÜR<br>EIN SAUBERES<br>ERGEBNIS.</h2>
+
+  <div class="contact-info">
+    <strong>G+C Facility GmbH</strong><br>
+    {{ gc_telefon|default('Telefon auf Anfrage') }}<br>
+    {{ gc_email|default('info@gc-facility.de') }}<br>
+    gc-facility.de
+  </div>
+
+  <div style="margin-top: 40px; font-size: 9pt; max-width: 500px; text-align: center; color: rgba(255,255,255,0.7);">
+    <strong style="color: #fff;">Nächste Schritte:</strong><br>
+    1. Angebot prüfen &amp; Rückfragen klären<br>
+    2. Vertrag &amp; Starttermin vereinbaren<br>
+    3. Testreinigung erleben
+  </div>
+</div>
+
+</body>
+</html>

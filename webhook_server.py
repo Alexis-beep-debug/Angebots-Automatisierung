@@ -16,8 +16,8 @@ import logging
 from fastapi import FastAPI, Request, HTTPException
 import pipedrive_client as pd
 import lexoffice_client as lx
-import google_client as gc
-from config import GOOGLE_PROBLEM_SLIDE_ID, PIPEDRIVE_OWNER_USER_ID
+import proposal_generator
+from config import PIPEDRIVE_OWNER_USER_ID
 
 logger = logging.getLogger(__name__)
 
@@ -137,94 +137,55 @@ async def link_clicked(request: Request) -> dict:
 @app.post("/webhook/generate-proposal")
 async def generate_proposal(request: Request) -> dict:
     """
-    Empfängt Kundendaten und führt die gesamte Angebotsautomatisierung aus:
+    Empfängt Superforms-Webhook-Daten und führt die Angebotsautomatisierung aus:
 
-    1. Pipedrive Person + Deal anlegen
-    2. Google Drive Ordner erstellen
-    3. Google Slides Template kopieren + befüllen
-    4. Dynamische Problem-Slides erzeugen
-    5. PDF exportieren + hochladen
-    6. Lexoffice Kontakt anlegen (MIT Billing-Adresse!)
-    7. Pipedrive Notiz + Aufgabe erstellen
+    1. PDF aus Superforms-Daten generieren (HTML/Jinja2 + WeasyPrint)
+    2. Pipedrive Person + Deal anlegen
+    3. Lexoffice Kontakt anlegen (MIT Billing-Adresse)
+    4. Pipedrive Notiz + Aufgabe erstellen
 
-    Erwarteter Payload:
-    {
-        "company_name": "Firma GmbH",
-        "contact_first_name": "Max",
-        "contact_last_name": "Mustermann",
-        "email": "max@firma.de",
-        "phone": "+49 123 456",
-        "street": "Musterstr. 1",
-        "zip_code": "12345",
-        "city": "Berlin",
-        "deal_title": "Angebot Webseite",
-        "deal_value": 5000,
-        "problems": [
-            {"title": "Problem 1", "description": "...", "solution": "..."},
-            ...
-        ],
-        "extra_replacements": {"{{CUSTOM}}": "Wert"}
-    }
+    Payload: Direkt das Superforms-Webhook-JSON mit Feldnamen wie
+    Firmenname, Anschrift, first_name, last_name, Email, etc.
     """
     payload: dict[str, Any] = await request.json()
 
-    company = payload.get("company_name", "Unbekannt")
-    first_name = payload.get("contact_first_name", "")
-    last_name = payload.get("contact_last_name", "")
-    email = payload.get("email", "")
-    phone = payload.get("phone", "")
-    street = payload.get("street", "")
-    zip_code = payload.get("zip_code", "")
-    city = payload.get("city", "")
-    deal_title = payload.get("deal_title", f"Angebot – {company}")
-    deal_value = payload.get("deal_value", 0)
-    problems = payload.get("problems", [])
-    extra_replacements = payload.get("extra_replacements", {})
+    # Map Superforms fields to readable names
+    template_data = proposal_generator.map_superforms_to_template(payload)
+    company = template_data["firma_name"] or "Unbekannt"
+    first_name = payload.get("first_name", "")
+    last_name = payload.get("last_name", "")
+    email = template_data["email"]
+    phone = template_data["telefon"]
+    street = template_data["rech_strasse"]
+    zip_code = template_data["rech_plz"]
+    city = template_data["rech_stadt"]
+    deal_title = f"Unterhaltsreinigung – {company}"
 
     results: dict[str, Any] = {}
 
-    # --- 1. Pipedrive: Person anlegen / finden ---
+    # --- 1. PDF generieren ---
+    try:
+        pdf_path = proposal_generator.generate_and_save(payload)
+        results["pdf_path"] = str(pdf_path)
+        logger.info("PDF generated: %s", pdf_path)
+    except Exception as exc:
+        logger.error("PDF generation failed: %s", exc)
+        results["pdf_error"] = str(exc)
+
+    # --- 2. Pipedrive: Person anlegen / finden ---
     person = None
     if email:
         person = await pd.search_person_by_email(email)
     if not person:
-        person = (await _create_pipedrive_person(first_name, last_name, email, phone, company))
+        person = await _create_pipedrive_person(first_name, last_name, email, phone, company)
     person_id = person["id"]
     results["person_id"] = person_id
 
-    # --- 2. Pipedrive: Deal anlegen ---
-    deal = await _create_pipedrive_deal(person_id, deal_title, deal_value)
+    # --- 3. Pipedrive: Deal anlegen ---
+    deal = await _create_pipedrive_deal(person_id, deal_title)
     results["deal_id"] = deal["id"]
 
-    # --- 3+4+5. Google: Ordner → Slides → PDF ---
-    contact_name = f"{first_name} {last_name}".strip()
-    replacements = {
-        "{{FIRMA}}": company,
-        "{{ANSPRECHPARTNER}}": contact_name,
-        "{{EMAIL}}": email,
-        "{{TELEFON}}": phone,
-        "{{STRASSE}}": street,
-        "{{PLZ}}": zip_code,
-        "{{STADT}}": city,
-        "{{DATUM}}": _now_str().split(" ")[0],
-        "{{DEAL_TITEL}}": deal_title,
-        **extra_replacements,
-    }
-    try:
-        google_result = gc.generate_proposal_pdf(
-            company_name=company,
-            contact_name=contact_name,
-            replacements=replacements,
-            problems=problems,
-            problem_slide_id=GOOGLE_PROBLEM_SLIDE_ID,
-        )
-        results["google"] = google_result
-        logger.info("Google proposal generated: %s", google_result)
-    except Exception as exc:
-        logger.error("Google proposal generation failed: %s", exc)
-        results["google_error"] = str(exc)
-
-    # --- 6. Lexoffice: Kontakt anlegen (mit Billing-Adresse!) ---
+    # --- 4. Lexoffice: Kontakt anlegen (mit Billing-Adresse!) ---
     try:
         lx_contact = await lx.get_or_create_contact(
             company_name=company,
@@ -242,15 +203,14 @@ async def generate_proposal(request: Request) -> dict:
         logger.error("Lexoffice contact creation failed: %s", exc)
         results["lexoffice_error"] = str(exc)
 
-    # --- 7. Pipedrive: Notiz + Aufgabe ---
+    # --- 5. Pipedrive: Notiz + Aufgabe ---
     ts = _now_str()
     note_text = (
         f"[{ts}] Angebot automatisch erstellt für {company}\n"
         f"Deal: {deal_title}\n"
     )
-    if results.get("google"):
-        note_text += f"Google Drive Ordner: {results['google']['folder_id']}\n"
-        note_text += f"PDF: {results['google']['pdf_file_id']}\n"
+    if results.get("pdf_path"):
+        note_text += f"PDF: {results['pdf_path']}\n"
 
     await pd.add_note(person_id=person_id, content=note_text)
     await pd.add_activity(
