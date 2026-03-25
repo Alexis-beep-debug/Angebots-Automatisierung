@@ -138,15 +138,8 @@ async def link_clicked(request: Request) -> dict:
 @app.post("/webhook/generate-proposal")
 async def generate_proposal(request: Request) -> dict:
     """
-    Empfängt Superforms-Webhook-Daten und führt die Angebotsautomatisierung aus:
-
-    1. PDF aus Superforms-Daten generieren (HTML/Jinja2 + WeasyPrint)
-    2. Pipedrive Person + Deal anlegen
-    3. Lexoffice Kontakt anlegen (MIT Billing-Adresse)
-    4. Pipedrive Notiz + Aufgabe erstellen
-
-    Payload: Direkt das Superforms-Webhook-JSON mit Feldnamen wie
-    Firmenname, Anschrift, first_name, last_name, Email, etc.
+    Empfängt Superforms-Webhook-Daten. Antwortet sofort mit 200 OK,
+    verarbeitet alles im Hintergrund (PDF, Pipedrive, Lexoffice, Drive).
     """
     # Accept both JSON and form-urlencoded (Superforms may send either)
     import json
@@ -184,16 +177,24 @@ async def generate_proposal(request: Request) -> dict:
     print("=== FLATTENED PAYLOAD ===", flush=True)
     print(json.dumps(payload, indent=2, default=str, ensure_ascii=False), flush=True)
 
-    # Map Superforms fields to readable names
-    template_data = proposal_generator.map_superforms_to_template(payload)
-    company = template_data["firma_name"] or "Unbekannt"
-    first_name = payload.get("first_name", "")
-    last_name = payload.get("last_name", "")
-    email = template_data["email"]
-    phone = template_data["telefon"]
-    street = template_data["rech_strasse"]
-    zip_code = template_data["rech_plz"]
-    city = template_data["rech_stadt"]
+    # Start processing in background, respond immediately
+    import asyncio
+    asyncio.create_task(_process_proposal(payload))
+    return {"status": "ok", "message": "Processing in background"}
+
+
+async def _process_proposal(payload: dict) -> None:
+    """Background task: generates PDF, creates Pipedrive/Lexoffice entries, uploads to Drive."""
+    try:
+        template_data = proposal_generator.map_superforms_to_template(payload)
+        company = template_data["firma_name"] or "Unbekannt"
+        first_name = payload.get("first_name", "")
+        last_name = payload.get("last_name", "")
+        email = template_data["email"]
+        phone = template_data["telefon"]
+        street = template_data["rech_strasse"]
+        zip_code = template_data["rech_plz"]
+        city = template_data["rech_stadt"]
     deal_title = f"Unterhaltsreinigung – {company}"
 
     results: dict[str, Any] = {}
@@ -327,7 +328,11 @@ async def generate_proposal(request: Request) -> dict:
         user_id=PIPEDRIVE_OWNER_USER_ID,
     )
 
-    return {"status": "ok", "results": results}
+        print(f"=== PROPOSAL PROCESSING COMPLETE for {company} ===", flush=True)
+    except Exception as exc:
+        print(f"=== PROPOSAL PROCESSING FAILED: {exc} ===", flush=True)
+        import traceback
+        traceback.print_exc()
 
 
 def _build_lexoffice_line_items(td: dict) -> list[dict]:
