@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request, HTTPException
 import pipedrive_client as pd
 import lexoffice_client as lx
 import proposal_generator
+import google_drive_client as gdrive
 from config import PIPEDRIVE_OWNER_USER_ID
 
 logger = logging.getLogger(__name__)
@@ -240,21 +241,50 @@ async def generate_proposal(request: Request) -> dict:
         logger.error("Lexoffice contact creation failed: %s", exc)
         results["lexoffice_error"] = str(exc)
 
-    # --- 5. Pipedrive: Notiz + Aufgabe ---
+    # --- 5. Google Drive: Ordner erstellen + PDFs hochladen ---
+    drive_link = ""
+    try:
+        folder_name = f"Angebot – {company}"
+        folder_id = gdrive.create_folder(folder_name)
+        drive_link = gdrive.get_folder_link(folder_id)
+        results["drive_folder"] = drive_link
+        print(f"Drive folder created: {drive_link}", flush=True)
+
+        # Upload Angebots-PDF
+        if results.get("pdf_path"):
+            from pathlib import Path
+            pdf_file = Path(results["pdf_path"])
+            if pdf_file.exists():
+                pdf_bytes = pdf_file.read_bytes()
+                gdrive.upload_pdf(pdf_bytes, pdf_file.name, folder_id)
+                print(f"Uploaded Angebots-PDF to Drive", flush=True)
+
+    except Exception as exc:
+        print(f"Google Drive failed: {exc}", flush=True)
+        results["drive_error"] = str(exc)
+
+    # --- 6. Pipedrive: Notiz + Aufgabe (mit Drive-Link) ---
     ts = _now_str()
     note_text = (
         f"[{ts}] Angebot automatisch erstellt für {company}\n"
         f"Deal: {deal_title}\n"
     )
+    if drive_link:
+        note_text += f"📁 Google Drive: {drive_link}\n"
     if results.get("pdf_path"):
         note_text += f"PDF: {results['pdf_path']}\n"
 
     await pd.add_note(person_id=person_id, content=note_text)
+
+    activity_note = f"Automatisch erstelltes Angebot für {deal_title}. Bitte prüfen und an den Kunden senden."
+    if drive_link:
+        activity_note += f"\n\n📁 Google Drive Ordner: {drive_link}"
+
     await _add_activity_with_deal(
         person_id=person_id,
         deal_id=deal_id,
         subject=f"Angebot prüfen & versenden: {company}",
-        note=f"Automatisch erstelltes Angebot für {deal_title}. Bitte prüfen und an den Kunden senden.",
+        note=activity_note,
         user_id=PIPEDRIVE_OWNER_USER_ID,
     )
 
