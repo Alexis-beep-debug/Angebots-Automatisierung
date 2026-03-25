@@ -146,34 +146,57 @@ async def generate_proposal(request: Request) -> dict:
     content_type = request.headers.get("content-type", "")
     print(f"=== CONTENT-TYPE: {content_type} ===", flush=True)
 
+    # Log raw body BEFORE parsing to see exact Superforms structure
+    raw_body = await request.body()
+    print(f"=== RAW BODY ({len(raw_body)} bytes) ===", flush=True)
+    print(raw_body.decode("utf-8", errors="replace")[:5000], flush=True)
+    print("=== END RAW BODY ===", flush=True)
+
     if "application/json" in content_type:
-        payload: dict[str, Any] = await request.json()
+        payload: dict[str, Any] = json.loads(raw_body)
     else:
         form_data = await request.form()
         payload = dict(form_data)
-
-    print("=== RAW WEBHOOK PAYLOAD ===", flush=True)
-    print(json.dumps(payload, indent=2, default=str, ensure_ascii=False), flush=True)
-    print("=== END PAYLOAD ===", flush=True)
 
     # Superforms wraps fields in {"files": [], "data": {...fields...}}
     if "data" in payload and isinstance(payload["data"], dict):
         payload = payload["data"]
 
     # Superforms sends nested objects: {"field": {"value": "...", "option_label": "...", ...}}
-    # For checkboxes/radios, use option_label (human-readable) instead of value (internal)
-    # Flatten to simple key-value: {"field": "value or option_label"}
+    # For checkboxes/radios, option_label can be a string OR a list (multi-select)
+    # Flatten to simple key-value, preserving lists for checkbox fields
     flat_payload: dict[str, Any] = {}
     for key, val in payload.items():
         if isinstance(val, dict) and "value" in val:
             # Use option_label for checkboxes/radios (has the readable text)
             if "option_label" in val and val["option_label"]:
-                flat_payload[key] = val["option_label"]
+                opt = val["option_label"]
+                # option_label can be: string, list, or comma-separated
+                if isinstance(opt, list):
+                    flat_payload[key] = opt
+                elif isinstance(opt, str) and "," in opt:
+                    # Could be comma-separated multi-select
+                    flat_payload[key] = opt
+                else:
+                    flat_payload[key] = opt
             else:
-                flat_payload[key] = val["value"]
+                v = val["value"]
+                # value can also be a list for multi-select
+                if isinstance(v, list):
+                    flat_payload[key] = v
+                else:
+                    flat_payload[key] = v
+        elif isinstance(val, list):
+            # Direct array value
+            flat_payload[key] = val
         else:
             flat_payload[key] = val
     payload = flat_payload
+
+    # Special debug for checkbox fields
+    print(f"=== CHECKBOX DEBUG ===", flush=True)
+    print(f"Probleme (Möglichkeit_2_2): {repr(payload.get('Möglichkeit_2_2'))}", flush=True)
+    print(f"Wünsche (field_cCLhd): {repr(payload.get('field_cCLhd'))}", flush=True)
     print("=== FLATTENED PAYLOAD ===", flush=True)
     print(json.dumps(payload, indent=2, default=str, ensure_ascii=False), flush=True)
 
