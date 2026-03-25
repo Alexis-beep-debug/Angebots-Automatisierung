@@ -5,9 +5,13 @@ load_dotenv()
 
 PIPEDRIVE_API_KEY = os.environ["PIPEDRIVE_API_KEY"]
 BREVO_API_KEY = os.environ["BREVO_API_KEY"]
+LEXOFFICE_API_KEY = os.environ.get("LEXOFFICE_API_KEY", "")
 
 PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
 BREVO_BASE = "https://api.brevo.com/v3"
+
+# Pipedrive User-ID für Aufgaben-Zuweisung
+PIPEDRIVE_OWNER_USER_ID = int(os.environ.get("PIPEDRIVE_OWNER_USER_ID", "20546477"))
 
 # Deal-Status-Mapping Pipedrive → Brevo
 DEAL_STATUS_MAP = {
