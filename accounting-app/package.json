@@ -1,0 +1,23 @@
+{
+  "name": "buchhaltung-automatisierung",
+  "version": "1.0.0",
+  "description": "Buchhaltungs-Automatisierungs-App (PWA) mit Claude Vision, Gmail Import, Kontist API und Google Sheets",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "google-auth-library": "^9.15.1",
+    "googleapis": "^144.0.0",
+    "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3"
+  }
+}

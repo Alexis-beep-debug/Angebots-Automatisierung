@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a73e8">
+  <title>Buchhaltung</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      max-width: 500px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    header {
+      background: #1a73e8;
+      color: white;
+      padding: 16px 20px;
+      padding-top: calc(env(safe-area-inset-top) + 16px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 { font-size: 20px; font-weight: 600; }
+
+    .status-dots { display: flex; gap: 6px; }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #ff4444;
+    }
+    .status-dot.active { background: #44ff44; }
+
+    .tabs {
+      display: flex;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      color: #1a73e8;
+      border-bottom-color: #1a73e8;
+    }
+
+    .view { display: none; padding: 20px; }
+    .view.active { display: block; }
+
+    .scan-btn {
+      width: 100%;
+      padding: 20px;
+      font-size: 18px;
+      font-weight: 600;
+      color: white;
+      background: #1a73e8;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+    .scan-btn:active { background: #1557b0; }
+
+    #camera-input { display: none; }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .card h3 {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .field:last-child { border-bottom: none; }
+    .field label { font-size: 14px; color: #666; }
+    .field input, .field select {
+      font-size: 14px;
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      text-align: right;
+      width: 55%;
+      background: white;
+    }
+
+    .confirm-btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      background: #34a853;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      margin-top: 16px;
+    }
+    .confirm-btn:active { background: #2d8e47; }
+    .confirm-btn:disabled { background: #ccc; }
+
+    .transaction-list { list-style: none; }
+    .transaction-item {
+      background: white;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .tx-left { flex: 1; }
+    .tx-haendler { font-size: 15px; font-weight: 500; }
+    .tx-meta { font-size: 12px; color: #888; margin-top: 2px; }
+    .tx-amount { font-size: 16px; font-weight: 600; }
+    .tx-amount.expense { color: #ea4335; }
+    .tx-amount.income { color: #34a853; }
+    .tx-status {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-top: 4px;
+      display: inline-block;
+    }
+    .tx-status.matched { background: #e6f4ea; color: #137333; }
+    .tx-status.open { background: #fce8e6; color: #c5221f; }
+    .tx-status.receipt { background: #e8f0fe; color: #1a73e8; }
+
+    .action-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1a73e8;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .action-btn:active { background: #f5f5f5; }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    .loading.active { display: block; }
+
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid #e0e0e0;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+
+    /* Invoice form */
+    .invoice-form .field input {
+      width: 60%;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Buchhaltung</h1>
+    <div class="status-dots">
+      <div class="status-dot" id="dot-google" title="Google"></div>
+      <div class="status-dot" id="dot-kontist" title="Kontist"></div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-view="scan">Scannen</button>
+    <button class="tab" data-view="transactions">Buchungen</button>
+    <button class="tab" data-view="tools">Tools</button>
+  </div>
+
+  <!-- SCAN VIEW -->
+  <div class="view active" id="view-scan">
+    <button class="scan-btn" onclick="document.getElementById('camera-input').click()">
+      Beleg scannen
+    </button>
+    <input type="file" id="camera-input" accept="image/*" capture="environment" onchange="handleScan(this)">
+
+    <div class="loading" id="scan-loading">
+      <div class="spinner"></div>
+      <p>Beleg wird analysiert...</p>
+    </div>
+
+    <div id="scan-result" style="display:none">
+      <div class="card">
+        <h3>Erkannte Daten</h3>
+        <div class="field">
+          <label>Betrag (brutto)</label>
+          <input type="number" id="r-brutto" step="0.01">
+        </div>
+        <div class="field">
+          <label>Netto</label>
+          <input type="number" id="r-netto" step="0.01">
+        </div>
+        <div class="field">
+          <label>MwSt</label>
+          <input type="number" id="r-mwst" step="0.01">
+        </div>
+        <div class="field">
+          <label>MwSt-Satz</label>
+          <select id="r-mwst-satz">
+            <option value="19">19%</option>
+            <option value="7">7%</option>
+            <option value="0">0%</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Datum</label>
+          <input type="date" id="r-datum">
+        </div>
+        <div class="field">
+          <label>Händler</label>
+          <input type="text" id="r-haendler">
+        </div>
+        <div class="field">
+          <label>Kategorie</label>
+          <select id="r-kategorie">
+            <option>Büromaterial</option>
+            <option>Reise</option>
+            <option>Software</option>
+            <option>Hardware</option>
+            <option>Bewirtung</option>
+            <option>Sonstiges</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Typ</label>
+          <select id="r-typ">
+            <option value="Ausgabe">Ausgabe</option>
+            <option value="Einnahme">Einnahme</option>
+          </select>
+        </div>
+      </div>
+      <button class="confirm-btn" onclick="confirmReceipt()">Bestätigen & Speichern</button>
+    </div>
+  </div>
+
+  <!-- TRANSACTIONS VIEW -->
+  <div class="view" id="view-transactions">
+    <div class="loading" id="tx-loading">
+      <div class="spinner"></div>
+      <p>Lade Buchungen...</p>
+    </div>
+    <ul class="transaction-list" id="tx-list"></ul>
+    <div class="empty-state" id="tx-empty" style="display:none">
+      Noch keine Buchungen vorhanden.
+    </div>
+  </div>
+
+  <!-- TOOLS VIEW -->
+  <div class="view" id="view-tools">
+    <button class="action-btn" onclick="triggerGmailImport()">
+      Gmail-Rechnungen importieren
+    </button>
+    <button class="action-btn" onclick="triggerKontistImport()">
+      Kontist-Transaktionen abrufen
+    </button>
+    <button class="action-btn" onclick="triggerMatching()">
+      Matching starten
+    </button>
+
+    <div class="card" style="margin-top: 20px">
+      <h3>Ausgehende Rechnung erfassen</h3>
+      <div class="invoice-form">
+        <div class="field">
+          <label>Kunde</label>
+          <input type="text" id="inv-kunde" placeholder="Firmenname">
+        </div>
+        <div class="field">
+          <label>Betrag (brutto)</label>
+          <input type="number" id="inv-brutto" step="0.01" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Datum</label>
+          <input type="date" id="inv-datum">
+        </div>
+        <div class="field">
+          <label>Beschreibung</label>
+          <input type="text" id="inv-desc" placeholder="Leistungsbeschreibung">
+        </div>
+      </div>
+      <button class="confirm-btn" onclick="saveOutgoingInvoice()">Rechnung speichern</button>
+    </div>
+
+    <div class="card" style="margin-top: 12px">
+      <h3>Verbindungen</h3>
+      <button class="action-btn" onclick="window.location.href='/auth/google'">
+        Google verbinden
+      </button>
+      <button class="action-btn" onclick="window.location.href='/auth/kontist'">
+        Kontist verbinden
+      </button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Tab Navigation
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('view-' + tab.dataset.view).classList.add('active');
+        if (tab.dataset.view === 'transactions') loadTransactions();
+      });
+    });
+
+    // Auth Status prüfen
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/status');
+        const data = await res.json();
+        document.getElementById('dot-google').classList.toggle('active', data.google);
+        document.getElementById('dot-kontist').classList.toggle('active', data.kontist);
+      } catch {}
+    }
+    checkAuth();
+
+    // Beleg scannen
+    async function handleScan(input) {
+      if (!input.files.length) return;
+
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('image', file);
+
+      document.getElementById('scan-loading').classList.add('active');
+      document.getElementById('scan-result').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/receipt/scan', { method: 'POST', body: formData });
+        const json = await res.json();
+
+        if (!res.ok) throw new Error(json.error);
+
+        const d = json.data;
+        document.getElementById('r-brutto').value = d.betrag_brutto || '';
+        document.getElementById('r-netto').value = d.betrag_netto || '';
+        document.getElementById('r-mwst').value = d.mwst_betrag || '';
+        document.getElementById('r-mwst-satz').value = d.mwst_satz || 19;
+        document.getElementById('r-datum').value = d.datum || '';
+        document.getElementById('r-haendler').value = d.haendler || '';
+        document.getElementById('r-kategorie').value = d.kategorie || 'Sonstiges';
+
+        document.getElementById('scan-result').style.display = 'block';
+      } catch (err) {
+        showToast('Fehler: ' + err.message);
+      } finally {
+        document.getElementById('scan-loading').classList.remove('active');
+        input.value = '';
+      }
+    }
+
+    // Beleg bestätigen
+    async function confirmReceipt() {
+      const data = {
+        betrag_brutto: parseFloat(document.getElementById('r-brutto').value),
+        betrag_netto: parseFloat(document.getElementById('r-netto').value),
+        mwst_betrag: parseFloat(document.getElementById('r-mwst').value),
+        mwst_satz: parseInt(document.getElementById('r-mwst-satz').value),
+        datum: document.getElementById('r-datum').value,
+        haendler: document.getElementById('r-haendler').value,
+        kategorie: document.getElementById('r-kategorie').value,
+        typ: document.getElementById('r-typ').value,
+      };
+
+      try {
+        const res = await fetch('/api/receipt/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) throw new Error((await res.json()).error);
+
+        showToast('Gespeichert!');
+        document.getElementById('scan-result').style.display = 'none';
+      } catch (err) {
+        showToast('Fehler: ' + err.message);
+      }
+    }
+
+    // Ausgehende Rechnung
+    async function saveOutgoingInvoice() {
+      const brutto = parseFloat(document.getElementById('inv-brutto').value);
+      if (!brutto) return showToast('Bitte Betrag eingeben');
+
+      const netto = Math.round((brutto / 1.19) * 100) / 100;
+      const data = {
+        betrag_brutto: brutto,
+        betrag_netto: netto,
+        mwst_betrag: Math.round((brutto - netto) * 100) / 100,
+        mwst_satz: 19,
+        datum: document.getElementById('inv-datum').value || new Date().toISOString().split('T')[0],
+        haendler: document.getElementById('inv-kunde').value || 'Unbekannt',
+        kategorie: 'Sonstiges',
+        beschreibung: document.getElementById('inv-desc').value || '',
+      };
+
+      try {
+        const res = await fetch('/api/invoice/outgoing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) throw new Error((await res.json()).error);
+
+        showToast('Rechnung gespeichert!');
+        document.getElementById('inv-kunde').value = '';
+        document.getElementById('inv-brutto').value = '';
+        document.getElementById('inv-desc').value = '';
+      } catch (err) {
+        showToast('Fehler: ' + err.message);
+      }
+    }
+
+    // Transaktionen laden
+    async function loadTransactions() {
+      const loading = document.getElementById('tx-loading');
+      const list = document.getElementById('tx-list');
+      const empty = document.getElementById('tx-empty');
+
+      loading.classList.add('active');
+      list.innerHTML = '';
+      empty.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/transactions/recent?count=10');
+        const json = await res.json();
+
+        if (!json.transactions || json.transactions.length === 0) {
+          empty.style.display = 'block';
+          return;
+        }
+
+        json.transactions.reverse().forEach(tx => {
+          const isExpense = tx['Typ'] === 'Ausgabe';
+          const statusClass = tx['Beleg-Status']?.includes('Gematcht') ? 'matched'
+            : tx['Beleg-Status']?.includes('Offen') ? 'open' : 'receipt';
+
+          list.innerHTML += `
+            <li class="transaction-item">
+              <div class="tx-left">
+                <div class="tx-haendler">${tx['Händler'] || 'Unbekannt'}</div>
+                <div class="tx-meta">${tx['Datum'] || ''} · ${tx['Kategorie'] || ''}</div>
+                <span class="tx-status ${statusClass}">${tx['Beleg-Status'] || ''}</span>
+              </div>
+              <div>
+                <div class="tx-amount ${isExpense ? 'expense' : 'income'}">
+                  ${isExpense ? '-' : '+'}${parseFloat(tx['Betrag Brutto'] || 0).toFixed(2)}€
+                </div>
+              </div>
+            </li>
+          `;
+        });
+      } catch (err) {
+        showToast('Fehler beim Laden');
+      } finally {
+        loading.classList.remove('active');
+      }
+    }
+
+    // Tool-Aktionen
+    async function triggerGmailImport() {
+      showToast('Gmail-Import gestartet...');
+      try {
+        const res = await fetch('/api/gmail/import', { method: 'POST' });
+        const data = await res.json();
+        showToast(`${data.processed || 0} Belege importiert`);
+      } catch { showToast('Fehler beim Import'); }
+    }
+
+    async function triggerKontistImport() {
+      showToast('Kontist-Import gestartet...');
+      try {
+        const res = await fetch('/api/kontist/import', { method: 'POST' });
+        const data = await res.json();
+        showToast(`${data.imported || 0} Transaktionen importiert`);
+      } catch { showToast('Fehler beim Import'); }
+    }
+
+    async function triggerMatching() {
+      showToast('Matching gestartet...');
+      try {
+        const res = await fetch('/api/matching/run', { method: 'POST' });
+        const data = await res.json();
+        showToast(`${data.matchCount || 0} Matches gefunden`);
+      } catch { showToast('Fehler beim Matching'); }
+    }
+
+    // Toast
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+
+    // Datum-Default für Rechnungsformular
+    document.getElementById('inv-datum').value = new Date().toISOString().split('T')[0];
+  </script>
+</body>
+</html>
