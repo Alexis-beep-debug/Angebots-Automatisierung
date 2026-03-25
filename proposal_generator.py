@@ -20,6 +20,55 @@ _TEMPLATE_DIR = Path(__file__).parent / "templates"
 _OUTPUT_DIR = Path(__file__).parent / "output"
 _OUTPUT_DIR.mkdir(exist_ok=True)
 
+# ── Bekannte Checkbox-Labels (für Smart-Parsing) ──
+KNOWN_PROBLEMS = [
+    "Ineffektive und Inkonsistente Reinigungsqualität",
+    "Schlechte Urlaubs/ und Krankheitsvertretung",
+    "fehlende Kontrolle",
+    "Intransparenz bei Leistung, Kosten und Prozessen",
+    "Mangelnde Zuverlässigkeit (Reliabilität)",
+    "Schlechtes Beschwerdemanagement",
+]
+
+KNOWN_WISHES = [
+    "Fachbetrieb / Meisterbetrieb",
+    "Nachhaltigkeit und Compliance",
+    "Proaktivität in Beratung und Ausführung",
+    "Digitale Nachweis- und Kontrollsysteme",
+    "Kein Zeitverlust durch ständiges kontrollieren",
+    "Alles aus einer Hand",
+]
+
+
+def _parse_checkboxes_smart(val, known_labels: list[str]) -> list[str]:
+    """Parse comma-separated checkbox string, matching against known labels.
+
+    Needed because some labels contain commas themselves
+    (e.g. 'Intransparenz bei Leistung, Kosten und Prozessen').
+    """
+    if isinstance(val, list):
+        return val
+    if not isinstance(val, str) or not val.strip():
+        return []
+
+    # Try to match known labels within the string
+    remaining = val.strip()
+    found: list[str] = []
+
+    # Sort known labels by length descending so longer matches win first
+    for label in sorted(known_labels, key=len, reverse=True):
+        if label in remaining:
+            found.append(label)
+            remaining = remaining.replace(label, "", 1)
+
+    # If smart matching found results, return them
+    if found:
+        # Preserve original order from the string
+        return sorted(found, key=lambda x: val.index(x))
+
+    # Fallback: simple comma split (for unknown labels)
+    return [v.strip() for v in val.split(",") if v.strip()]
+
 
 def map_superforms_to_template(data: dict) -> dict:
     """
@@ -112,8 +161,8 @@ def map_superforms_to_template(data: dict) -> dict:
     service_fenster = data.get("Menge_2_2_2", "") == "on"
 
     # ── Probleme & Wünsche (Checkboxen) ──
-    selected_problems = _parse_checkboxes(data.get("Möglichkeit_2_2", ""))
-    selected_wishes = _parse_checkboxes(data.get("field_cCLhd", ""))
+    selected_problems = _parse_checkboxes_smart(data.get("Möglichkeit_2_2", ""), KNOWN_PROBLEMS)
+    selected_wishes = _parse_checkboxes_smart(data.get("field_cCLhd", ""), KNOWN_WISHES)
 
     # ── Datum ──
     heute = datetime.now(timezone.utc).strftime("%d.%m.%Y")
