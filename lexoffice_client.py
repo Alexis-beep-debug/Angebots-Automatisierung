@@ -143,35 +143,116 @@ async def create_quote(
     introduction: str = "",
     line_items: list[dict] | None = None,
     currency: str = "EUR",
+    net_amount: float = 0.0,
 ) -> dict:
     """Create a Lexoffice quote (Angebot) for a contact."""
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%dT00:00:00.000+01:00")
+    expiry = datetime.now(timezone.utc).strftime("%Y-%m-%dT00:00:00.000+01:00")
+
     items = line_items or [
         {
             "type": "custom",
-            "name": title,
+            "name": "Unterhaltsreinigung (monatlich)",
             "quantity": 1,
-            "unitName": "Stück",
-            "unitPrice": {"currency": currency, "netAmount": 0.0, "taxRatePercentage": 19.0},
+            "unitName": "Monat",
+            "unitPrice": {
+                "currency": currency,
+                "netAmount": net_amount,
+                "taxRatePercentage": 19.0,
+            },
         }
     ]
 
     payload = {
-        "voucherDate": None,  # Lexoffice sets to today if None
+        "voucherDate": today,
+        "expirationDate": expiry,
         "address": {"contactId": contact_id},
         "lineItems": items,
         "totalPrice": {"currency": currency},
         "taxConditions": {"taxType": "net"},
         "title": title,
         "introduction": introduction,
+        "remark": "Dieses Angebot wurde automatisch erstellt.",
     }
-    # Remove None values
-    payload = {k: v for k, v in payload.items() if v is not None}
 
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         r = await client.post(
             f"{_BASE}/quotations",
             headers=_headers(),
             json=payload,
+            params={"finalize": "true"},
         )
+        if r.status_code >= 400:
+            print(f"Lexoffice quote error {r.status_code}: {r.text}", flush=True)
         r.raise_for_status()
         return r.json()
+
+
+async def render_document(document_id: str, doc_type: str = "quotations") -> None:
+    """Trigger PDF rendering for a Lexoffice document (required before download)."""
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        r = await client.get(
+            f"{_BASE}/{doc_type}/{document_id}/document",
+            headers=_headers(),
+        )
+        r.raise_for_status()
+
+
+async def download_pdf(document_id: str) -> bytes:
+    """Download a rendered Lexoffice document as PDF bytes."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
+        # Render the document (returns documentFileId)
+        render_r = await client.get(
+            f"{_BASE}/quotations/{document_id}/document",
+            headers=_headers(),
+        )
+        # If 406, try the /render endpoint instead
+        if render_r.status_code == 406:
+            print(f"Lexoffice: /document returned 406, trying direct file endpoint", flush=True)
+            # Try getting the voucher to find the file ID
+            voucher_r = await client.get(
+                f"{_BASE}/quotations/{document_id}",
+                headers=_headers(),
+            )
+            voucher_r.raise_for_status()
+            voucher_data = voucher_r.json()
+            print(f"Lexoffice voucher data keys: {list(voucher_data.keys())}", flush=True)
+
+            # Check if there's a files array or documentFileId
+            files = voucher_data.get("files", {})
+            document_file_id = files.get("documentFileId", "")
+            if not document_file_id:
+                # Try the voucherStatus - maybe needs to be pursued first
+                print(f"Lexoffice voucher status: {voucher_data.get('voucherStatus', 'unknown')}", flush=True)
+                raise ValueError(f"Cannot get PDF - quote may need to be finalized in Lexoffice first. Status: {voucher_data.get('voucherStatus', 'unknown')}")
+        else:
+            render_r.raise_for_status()
+            render_data = render_r.json()
+            document_file_id = render_data.get("documentFileId", "")
+
+        if not document_file_id:
+            raise ValueError("No documentFileId returned from Lexoffice")
+
+        # Download the PDF
+        dl_headers = _headers()
+        dl_headers["Accept"] = "application/pdf"
+        pdf_r = await client.get(
+            f"{_BASE}/files/{document_file_id}",
+            headers=dl_headers,
+        )
+        pdf_r.raise_for_status()
+
+        content_type = pdf_r.headers.get("content-type", "")
+        print(f"Lexoffice file content-type: {content_type}, size: {len(pdf_r.content)} bytes", flush=True)
+
+        # If response is JSON with base64, decode it
+        if "json" in content_type:
+            import json
+            data = pdf_r.json()
+            if isinstance(data, str):
+                import base64
+                return base64.b64decode(data)
+            print(f"Lexoffice file JSON keys: {list(data.keys()) if isinstance(data, dict) else 'not a dict'}", flush=True)
+
+        return pdf_r.content

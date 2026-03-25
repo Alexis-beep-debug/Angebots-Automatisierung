@@ -326,11 +326,9 @@
     color: #fff;
     width: 38%;
     height: 100%;
-    padding: 40px 30px;
+    padding: 30px 24px;
     float: left;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    overflow: hidden;
   }
   .cover-right {
     margin-left: 38%;
@@ -338,11 +336,11 @@
     height: 100%;
   }
   .cover-left .logo-area {
-    margin-bottom: 30px;
+    margin-bottom: 20px;
   }
   .cover-left .logo-area .logo-text {
     font-family: 'Roboto Slab', serif;
-    font-size: 16pt;
+    font-size: 14pt;
     font-weight: 700;
     line-height: 1.2;
   }
@@ -355,14 +353,14 @@
   }
   .cover-left h1 {
     font-family: 'Roboto Slab', serif;
-    font-size: 28pt;
+    font-size: 22pt;
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
   }
   .cover-left .cover-type {
-    font-size: 12pt;
+    font-size: 10pt;
     color: rgba(255,255,255,0.8);
-    margin-bottom: 24px;
+    margin-bottom: 16px;
   }
   .cover-left .cover-divider {
     width: 60px;
@@ -371,8 +369,9 @@
     margin-bottom: 24px;
   }
   .cover-meta {
-    font-size: 8.5pt;
-    line-height: 2;
+    font-size: 8pt;
+    line-height: 1.6;
+    margin-top: 16px;
   }
   .cover-meta .meta-label {
     text-transform: uppercase;
@@ -415,8 +414,10 @@
     line-height: 1.6;
   }
 
-  /* ── Logo SVG inline ── */
+  /* ── Logo ── */
   .gc-logo-svg { width: 48px; height: 48px; margin-bottom: 10px; }
+  .gc-logo-img { height: 90px; margin-bottom: 10px; }
+  .logo-icon-img { height: 44px; }
 </style>
 </head>
 <body>
@@ -428,12 +429,7 @@
   <div class="cover-left">
     <div>
       <div class="logo-area">
-        <svg class="gc-logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
-          <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
-          <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
-          <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
-        </svg>
+        <img class="gc-logo-img" src="https://drive.google.com/uc?export=view&id=1RoInI8le_q6bx2Wo3kScu-229zQ7ZTBo" alt="G+C Logo">
         <div class="logo-text">G+C<br>FACILITY</div>
         <div class="logo-sub">GMBH</div>
       </div>
@@ -446,14 +442,11 @@
     <div class="cover-meta">
       <div class="meta-label">Datum</div>
       <div>{{ datum }}</div>
-      <br>
-      <div class="meta-label">Angebots-Nr.</div>
+      <div class="meta-label" style="margin-top:8px;">Angebots-Nr.</div>
       <div>{{ angebots_id }}</div>
-      <br>
-      <div class="meta-label">Objekt</div>
+      <div class="meta-label" style="margin-top:8px;">Objekt</div>
       <div>{{ objekt_adresse }}</div>
-      <br>
-      <div class="meta-label">Ansprechpartner</div>
+      <div class="meta-label" style="margin-top:8px;">Ansprechpartner</div>
       <div>{{ kontaktperson_name }}</div>
     </div>
   </div>
@@ -467,7 +460,7 @@
     <div class="offer-title">Angebot: Unterhaltsreinigung {{ objekt_adresse }}</div>
 
     <div class="greeting">
-      <p>Sehr geehrte(r) {{ kontaktperson_name }},</p>
+      <p>Guten Tag {{ kontaktperson_name }},</p>
 
       <p>vielen Dank für das angenehme Gespräch am {{ datum_begehung }}. Es hat uns gefreut, Ihre
       Räumlichkeiten und Ihre Anforderungen kennenzulernen.</p>
@@ -494,12 +487,7 @@
 <div class="page">
   <div class="header-bar">
     <span>Lösungsansatz</span>
-    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
-      <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
-      <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
-      <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
-    </svg>
+    <img class="logo-icon-img" src="https://drive.google.com/uc?export=view&id=1RoInI8le_q6bx2Wo3kScu-229zQ7ZTBo" alt="G+C">
   </div>
   <div class="page-content">
     <div class="section-title">OPTIMIERUNGSPOTENZIAL</div>
@@ -530,12 +518,7 @@
 <div class="page">
   <div class="header-bar">
     <span>Objektanalyse</span>
-    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
-      <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
-      <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
-      <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
-    </svg>
+    <img class="logo-icon-img" src="https://drive.google.com/uc?export=view&id=1RoInI8le_q6bx2Wo3kScu-229zQ7ZTBo" alt="G+C">
   </div>
   <div class="page-content">
     <div class="section-title">DATEN &amp; FAKTEN</div>
@@ -584,11 +567,11 @@
             <svg viewBox="0 0 24 24"><path d="M20 6H4v2h16V6zm-2 4H6v2h12v-2zm2 4H4v2h16v-2zm-2 4H6v2h12v-2z"/></svg>
           </div>
         </div>
-        <div class="big-number">{{ anzahl_arbeitsplaetze }}</div>
-        <div class="card-label">Arbeitsplätze</div>
+        <div class="big-number">{{ buero_tische|default(0) }}</div>
+        <div class="card-label">Schreibtische</div>
         <div class="details">
-          Sanitär: {{ sanitaer_wc|default(0) }} WCs<br>
-          Küche: {{ kueche_raeume|default(0) }}x vorhanden<br>
+          Bürostühle: {{ buero_stuehle|default(0) }} Stk.<br>
+          Schränke/Regale: {{ schraenke|default(0) }} Stk.<br>
           Mülleimer: {{ muelleimer|default(0) }} Stk.
         </div>
       </div>
@@ -609,12 +592,7 @@
 <div class="page">
   <div class="header-bar">
     <span>Kalkulation im Detail</span>
-    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
-      <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
-      <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
-      <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
-    </svg>
+    <img class="logo-icon-img" src="https://drive.google.com/uc?export=view&id=1RoInI8le_q6bx2Wo3kScu-229zQ7ZTBo" alt="G+C">
   </div>
   <div class="page-content">
     <div class="section-title">KALKULATION IM DETAIL</div>
@@ -681,12 +659,7 @@
 <div class="page">
   <div class="header-bar">
     <span>Zusatzmodule</span>
-    <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
-      <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
-      <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
-      <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
-    </svg>
+    <img class="logo-icon-img" src="https://drive.google.com/uc?export=view&id=1RoInI8le_q6bx2Wo3kScu-229zQ7ZTBo" alt="G+C">
   </div>
   <div class="page-content">
     <div class="section-title">EMPFOHLENE ZUSATZMODULE</div>
@@ -742,12 +715,7 @@
    SEITE 6: GEMEINSAM FÜR EIN SAUBERES ERGEBNIS
    ═══════════════════════════════════════════════════════════ #}
 <div class="page closing-page">
-  <svg style="width: 80px; height: 80px; margin-bottom: 30px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <rect x="35" y="5" width="30" height="40" rx="4" fill="white"/>
-    <rect x="5" y="35" width="40" height="30" rx="4" fill="white"/>
-    <rect x="55" y="35" width="40" height="30" rx="4" fill="white"/>
-    <rect x="35" y="55" width="30" height="40" rx="4" fill="white"/>
-  </svg>
+  <img src="https://drive.google.com/uc?export=view&id=1RoInI8le_q6bx2Wo3kScu-229zQ7ZTBo" alt="G+C" style="height: 120px; margin-bottom: 30px;">
 
   <h2>GEMEINSAM FÜR<br>EIN SAUBERES<br>ERGEBNIS.</h2>
 

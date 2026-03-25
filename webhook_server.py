@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request, HTTPException
 import pipedrive_client as pd
 import lexoffice_client as lx
 import proposal_generator
+import google_drive_client as gdrive
 from config import PIPEDRIVE_OWNER_USER_ID
 
 logger = logging.getLogger(__name__)
@@ -137,90 +138,233 @@ async def link_clicked(request: Request) -> dict:
 @app.post("/webhook/generate-proposal")
 async def generate_proposal(request: Request) -> dict:
     """
-    Empfängt Superforms-Webhook-Daten und führt die Angebotsautomatisierung aus:
-
-    1. PDF aus Superforms-Daten generieren (HTML/Jinja2 + WeasyPrint)
-    2. Pipedrive Person + Deal anlegen
-    3. Lexoffice Kontakt anlegen (MIT Billing-Adresse)
-    4. Pipedrive Notiz + Aufgabe erstellen
-
-    Payload: Direkt das Superforms-Webhook-JSON mit Feldnamen wie
-    Firmenname, Anschrift, first_name, last_name, Email, etc.
+    Empfängt Superforms-Webhook-Daten. Antwortet sofort mit 200 OK,
+    verarbeitet alles im Hintergrund (PDF, Pipedrive, Lexoffice, Drive).
     """
-    payload: dict[str, Any] = await request.json()
+    # Accept both JSON and form-urlencoded (Superforms may send either)
+    import json
+    content_type = request.headers.get("content-type", "")
+    print(f"=== CONTENT-TYPE: {content_type} ===", flush=True)
 
-    # Map Superforms fields to readable names
-    template_data = proposal_generator.map_superforms_to_template(payload)
-    company = template_data["firma_name"] or "Unbekannt"
-    first_name = payload.get("first_name", "")
-    last_name = payload.get("last_name", "")
-    email = template_data["email"]
-    phone = template_data["telefon"]
-    street = template_data["rech_strasse"]
-    zip_code = template_data["rech_plz"]
-    city = template_data["rech_stadt"]
-    deal_title = f"Unterhaltsreinigung – {company}"
+    if "application/json" in content_type:
+        payload: dict[str, Any] = await request.json()
+    else:
+        form_data = await request.form()
+        payload = dict(form_data)
 
-    results: dict[str, Any] = {}
+    print("=== RAW WEBHOOK PAYLOAD ===", flush=True)
+    print(json.dumps(payload, indent=2, default=str, ensure_ascii=False), flush=True)
+    print("=== END PAYLOAD ===", flush=True)
 
-    # --- 1. PDF generieren ---
+    # Superforms wraps fields in {"files": [], "data": {...fields...}}
+    if "data" in payload and isinstance(payload["data"], dict):
+        payload = payload["data"]
+
+    # Superforms sends nested objects: {"field": {"value": "...", "option_label": "...", ...}}
+    # For checkboxes/radios, use option_label (human-readable) instead of value (internal)
+    # Flatten to simple key-value: {"field": "value or option_label"}
+    flat_payload: dict[str, Any] = {}
+    for key, val in payload.items():
+        if isinstance(val, dict) and "value" in val:
+            # Use option_label for checkboxes/radios (has the readable text)
+            if "option_label" in val and val["option_label"]:
+                flat_payload[key] = val["option_label"]
+            else:
+                flat_payload[key] = val["value"]
+        else:
+            flat_payload[key] = val
+    payload = flat_payload
+    print("=== FLATTENED PAYLOAD ===", flush=True)
+    print(json.dumps(payload, indent=2, default=str, ensure_ascii=False), flush=True)
+
+    # Start processing in background, respond immediately
+    import asyncio
+    asyncio.create_task(_process_proposal(payload))
+    return {"status": "ok", "message": "Processing in background"}
+
+
+async def _process_proposal(payload: dict) -> None:
+    """Background task: generates PDF, creates Pipedrive/Lexoffice entries, uploads to Drive."""
     try:
-        pdf_path = proposal_generator.generate_and_save(payload)
-        results["pdf_path"] = str(pdf_path)
-        logger.info("PDF generated: %s", pdf_path)
-    except Exception as exc:
-        logger.error("PDF generation failed: %s", exc)
-        results["pdf_error"] = str(exc)
+        template_data = proposal_generator.map_superforms_to_template(payload)
+        company = template_data["firma_name"] or "Unbekannt"
+        first_name = payload.get("first_name", "")
+        last_name = payload.get("last_name", "")
+        email = template_data["email"]
+        phone = template_data["telefon"]
+        street = template_data["rech_strasse"]
+        zip_code = template_data["rech_plz"]
+        city = template_data["rech_stadt"]
+        deal_title = f"Unterhaltsreinigung – {company}"
 
-    # --- 2. Pipedrive: Person anlegen / finden ---
-    person = None
-    if email:
-        person = await pd.search_person_by_email(email)
-    if not person:
-        person = await _create_pipedrive_person(first_name, last_name, email, phone, company)
-    person_id = person["id"]
-    results["person_id"] = person_id
+        results: dict[str, Any] = {}
 
-    # --- 3. Pipedrive: Deal anlegen ---
-    deal = await _create_pipedrive_deal(person_id, deal_title)
-    results["deal_id"] = deal["id"]
+        # --- 1. PDF generieren ---
+        try:
+            pdf_path = proposal_generator.generate_and_save(payload)
+            results["pdf_path"] = str(pdf_path)
+        except Exception as exc:
+            print(f"PDF generation failed: {exc}", flush=True)
+            results["pdf_error"] = str(exc)
 
-    # --- 4. Lexoffice: Kontakt anlegen (mit Billing-Adresse!) ---
-    try:
-        lx_contact = await lx.get_or_create_contact(
-            company_name=company,
-            email=email,
-            first_name=first_name,
-            last_name=last_name,
-            phone=phone,
-            street=street,
-            zip_code=zip_code,
-            city=city,
+        # --- 2. Pipedrive: Person anlegen / finden ---
+        person = None
+        if email:
+            person = await pd.search_person_by_email(email)
+        if not person:
+            person = await _create_pipedrive_person(first_name, last_name, email, phone, company)
+        person_id = person["id"]
+        results["person_id"] = person_id
+
+        # --- 3. Pipedrive: Deal anlegen / finden ---
+        existing_deals = await pd.get_person_deals(person_id)
+        deal = None
+        for d in existing_deals:
+            if d.get("title", "").startswith("Unterhaltsreinigung"):
+                deal = d
+                break
+        if not deal:
+            deal = await _create_pipedrive_deal(person_id, deal_title)
+        deal_id = deal["id"]
+        results["deal_id"] = deal_id
+
+        # --- 4. Lexoffice: Kontakt + Angebot anlegen ---
+        lexoffice_pdf_bytes = None
+        try:
+            lx_contact = await lx.get_or_create_contact(
+                company_name=company, email=email, first_name=first_name,
+                last_name=last_name, phone=phone, street=street,
+                zip_code=zip_code, city=city,
+            )
+            contact_id = lx_contact.get("id") or ""
+            if not contact_id and lx_contact.get("resourceUri"):
+                contact_id = lx_contact["resourceUri"].rstrip("/").split("/")[-1]
+            results["lexoffice_contact_id"] = contact_id
+            print(f"Lexoffice contact: {contact_id}", flush=True)
+
+            if contact_id:
+                line_items = _build_lexoffice_line_items(template_data)
+                quote = await lx.create_quote(
+                    contact_id=contact_id, title="Unterhaltsreinigung",
+                    introduction=f"Angebot für die Unterhaltsreinigung am Standort {template_data['objekt_adresse']}.",
+                    line_items=line_items,
+                )
+                quote_id = quote.get("id", "")
+                results["lexoffice_quote_id"] = quote_id
+                print(f"Lexoffice quote created: {quote_id}", flush=True)
+
+                if quote_id:
+                    import asyncio as aio
+                    await aio.sleep(2)
+                    try:
+                        lexoffice_pdf_bytes = await lx.download_pdf(quote_id)
+                        print(f"Lexoffice PDF downloaded: {len(lexoffice_pdf_bytes)} bytes", flush=True)
+                    except Exception as pdf_exc:
+                        print(f"Lexoffice PDF download failed: {pdf_exc}", flush=True)
+        except Exception as exc:
+            print(f"Lexoffice failed: {exc}", flush=True)
+            results["lexoffice_error"] = str(exc)
+
+        # --- 5. Google Drive: Ordner erstellen + PDFs hochladen ---
+        drive_link = ""
+        try:
+            folder_name = f"Angebot – {company}"
+            folder_id = gdrive.create_folder(folder_name)
+            drive_link = gdrive.get_folder_link(folder_id)
+            results["drive_folder"] = drive_link
+            print(f"Drive folder created: {drive_link}", flush=True)
+
+            if results.get("pdf_path"):
+                from pathlib import Path
+                pdf_file = Path(results["pdf_path"])
+                if pdf_file.exists():
+                    gdrive.upload_pdf(pdf_file.read_bytes(), pdf_file.name, folder_id)
+                    print(f"Uploaded Angebots-PDF to Drive", flush=True)
+
+            if lexoffice_pdf_bytes:
+                lx_filename = f"Lexoffice_Angebot_{company.replace(' ', '_')}.pdf"
+                gdrive.upload_pdf(lexoffice_pdf_bytes, lx_filename, folder_id)
+                print(f"Uploaded Lexoffice-PDF to Drive", flush=True)
+        except Exception as exc:
+            print(f"Google Drive failed: {exc}", flush=True)
+            results["drive_error"] = str(exc)
+
+        # --- 6. Pipedrive: Notiz + Aufgabe (mit Drive-Link) ---
+        ts = _now_str()
+        note_text = f"[{ts}] Angebot automatisch erstellt für {company}\nDeal: {deal_title}\n"
+        if drive_link:
+            note_text += f"Google Drive: {drive_link}\n"
+
+        await pd.add_note(person_id=person_id, content=note_text)
+
+        activity_note = f"Automatisch erstelltes Angebot für {deal_title}. Bitte prüfen und an den Kunden senden."
+        if drive_link:
+            activity_note += f"\n\nGoogle Drive Ordner: {drive_link}"
+
+        await _add_activity_with_deal(
+            person_id=person_id, deal_id=deal_id,
+            subject=f"Angebot prüfen & versenden: {company}",
+            note=activity_note, user_id=PIPEDRIVE_OWNER_USER_ID,
         )
-        results["lexoffice_contact_id"] = lx_contact.get("id") or lx_contact.get("resourceUri", "")
-        logger.info("Lexoffice contact: %s", results["lexoffice_contact_id"])
+
+        print(f"=== PROPOSAL PROCESSING COMPLETE for {company} ===", flush=True)
     except Exception as exc:
-        logger.error("Lexoffice contact creation failed: %s", exc)
-        results["lexoffice_error"] = str(exc)
+        print(f"=== PROPOSAL PROCESSING FAILED: {exc} ===", flush=True)
+        import traceback
+        traceback.print_exc()
 
-    # --- 5. Pipedrive: Notiz + Aufgabe ---
-    ts = _now_str()
-    note_text = (
-        f"[{ts}] Angebot automatisch erstellt für {company}\n"
-        f"Deal: {deal_title}\n"
-    )
-    if results.get("pdf_path"):
-        note_text += f"PDF: {results['pdf_path']}\n"
 
-    await pd.add_note(person_id=person_id, content=note_text)
-    await pd.add_activity(
-        person_id=person_id,
-        subject=f"Angebot prüfen & versenden: {company}",
-        note=f"Automatisch erstelltes Angebot für {deal_title}. Bitte prüfen und an den Kunden senden.",
-        user_id=PIPEDRIVE_OWNER_USER_ID,
-    )
+def _build_lexoffice_line_items(td: dict) -> list[dict]:
+    """Build Lexoffice line items from template data with calculated prices."""
+    def _parse_price(s: str) -> float:
+        try:
+            return float(s.replace(".", "").replace(",", ".").replace("–", "0"))
+        except (ValueError, AttributeError):
+            return 0.0
 
-    return {"status": "ok", "results": results}
+    freq_muell = td.get("intervall_muell", "2x Woche")
+    freq_san = td.get("intervall_sanitaer", "5x Woche")
+
+    items = []
+    price_map = [
+        ("Schreibtische", td.get("buero_tische", 0), "Stck", td.get("preis_schreibtische", "–"), "1x/Woche"),
+        ("Bürostühle", td.get("buero_stuehle", 0), "Stck", td.get("preis_buerostuehle", "–"), "1x/Monat"),
+        ("Mülleimer", td.get("muelleimer", 0), "Stck", td.get("preis_muelleimer", "–"), freq_muell),
+        ("Schränke/Regale", td.get("schraenke", 0), "Stck", td.get("preis_schraenke", "–"), "1x/Woche"),
+        ("Büroflächen Reinigung", td.get("buero_qm", 0), "m²", td.get("preis_buero_boden", "–"), "2x/Woche"),
+        ("Meetingflächen Reinigung", td.get("meeting_qm", 0), "m²", td.get("preis_meeting_boden", "–"), "2x/Woche"),
+        ("Weitere Flächen Reinigung", td.get("weitere_qm", 0), "m²", td.get("preis_weitere_boden", "–"), "2x/Woche"),
+        ("WC-Anlagen", td.get("sanitaer_wc", 0), "Stck", td.get("preis_wc", "–"), freq_san),
+        ("Waschbecken", td.get("sanitaer_waschbecken", 0), "Stck", td.get("preis_waschbecken", "–"), freq_san),
+        ("Duschen", td.get("sanitaer_duschen", 0), "Stck", td.get("preis_duschen", "–"), "1x/Woche"),
+        ("Küche komplett", td.get("kueche_raeume", 0), "Stck", td.get("preis_kueche", "–"), "5x/Woche"),
+    ]
+
+    for name, qty, unit, price_str, freq in price_map:
+        price = _parse_price(str(price_str))
+        if qty and price > 0:
+            items.append({
+                "type": "custom",
+                "name": f"{name} – {qty} {unit}, {freq}",
+                "quantity": 1,
+                "unitName": "Monat",
+                "unitPrice": {
+                    "currency": "EUR",
+                    "netAmount": price,
+                    "taxRatePercentage": 19.0,
+                },
+            })
+
+    if not items:
+        items.append({
+            "type": "custom",
+            "name": "Unterhaltsreinigung (monatlich)",
+            "quantity": 1,
+            "unitName": "Monat",
+            "unitPrice": {"currency": "EUR", "netAmount": 0.0, "taxRatePercentage": 19.0},
+        })
+
+    return items
 
 
 # ---------------------------------------------------------------------------
@@ -243,6 +387,32 @@ async def _create_pipedrive_person(
             payload["phone"] = [{"value": phone, "primary": True}]
         r = await client.post(
             f"{PIPEDRIVE_BASE}/persons",
+            params={"api_token": PIPEDRIVE_API_KEY},
+            json=payload,
+        )
+        r.raise_for_status()
+        return r.json()["data"]
+
+
+async def _add_activity_with_deal(
+    person_id: int, deal_id: int, subject: str, note: str = "", user_id: int | None = None
+) -> dict:
+    """Create a Pipedrive activity linked to both person AND deal."""
+    from config import PIPEDRIVE_API_KEY, PIPEDRIVE_BASE
+    import httpx
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
+        payload: dict[str, Any] = {
+            "subject": subject,
+            "type": "task",
+            "person_id": person_id,
+            "deal_id": deal_id,
+            "done": 0,
+            "note": note,
+        }
+        if user_id:
+            payload["user_id"] = user_id
+        r = await client.post(
+            f"{PIPEDRIVE_BASE}/activities",
             params={"api_token": PIPEDRIVE_API_KEY},
             json=payload,
         )

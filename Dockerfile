@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
     libpangoft2-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-2.0-0 \
     libcairo2 \
     libffi-dev \
     libglib2.0-0 \
@@ -23,4 +23,4 @@ RUN mkdir -p /app/output
 
 EXPOSE 8000
 
-CMD uvicorn webhook_server:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["sh", "-c", "uvicorn webhook_server:app --host 0.0.0.0 --port ${PORT:-8000}"]
